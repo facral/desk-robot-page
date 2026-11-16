@@ -23,7 +23,7 @@ Limits to know: one chunk POST carries about 4 MB of base64 JSON, under Apps Scr
 
 ## 3. Configure and host the page
 1. **[you]** Paste the `/exec` URL into `CONFIG.ENDPOINT` in `index.html`; set `RESEARCHER`, `CONTACT`, `CONSENT_URL` when you have them.
-2. **[claude]** Create a GitHub repo and enable Pages (needs your OK once):
+2. **Done 2026-11-16.** Repo: https://github.com/facral/desk-robot-page (public). Live page: https://facral.github.io/desk-robot-page/ (demo mode until `ENDPOINT` is set; add `#fast` for 12-second blocks). After any edit, `git push` republishes in about a minute. Commands used:
    ```
    gh repo create desk-robot-page --public --source=. --push
    gh api -X POST repos/<user>/desk-robot-page/pages -f build_type=legacy -f "source[branch]=main" -f "source[path]=/"
