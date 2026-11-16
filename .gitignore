@@ -1,0 +1,10 @@
+.clasprc.json
+apps-script/.clasp.json
+.env
+*.webm
+*.mp4
+*_features.csv
+*_events.csv
+node_modules/
+__pycache__/
+.claude/settings.local.json

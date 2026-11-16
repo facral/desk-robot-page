@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sesi Robot Meja</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=DotGothic16&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one calm column; the LED robot head is the single bold element, everything else stays quiet. */
+:root{
+  --bg:#eef1ee; --surface:#fbfcfb; --ink:#17211e; --muted:#58675f; --line:#d3dbd6;
+  --accent:#0e6b5c; --accent-ink:#ffffff; --warn:#a15c00;
+  --plate:#11171a; --led:#ffb547; --led-dim:#2b2415;
+  --ring-idle:#3a4a50; --ring-listen:#5cc8ff; --ring-think:#ffb547; --ring-speak:#5fe3a1;
+  --font-d:'Bricolage Grotesque',system-ui,sans-serif;
+  --font-b:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-dot:'DotGothic16',ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1514; --surface:#172120; --ink:#e6eeea; --muted:#9db0a8; --line:#263330;
+    --accent:#4fd1b5; --accent-ink:#04231c; --warn:#f0b35a; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1514; --surface:#172120; --ink:#e6eeea; --muted:#9db0a8; --line:#263330;
+  --accent:#4fd1b5; --accent-ink:#04231c; --warn:#f0b35a; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:400 17px/1.55 var(--font-b)}
+.app{max-width:860px;margin:0 auto;padding:20px 16px 64px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:22px}
+.brand{font:700 15px var(--font-d);letter-spacing:.03em;color:var(--muted)}
+.lang{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.lang button{border:0;background:transparent;color:var(--muted);padding:6px 14px;font:600 13px var(--font-b);cursor:pointer}
+.lang button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+h1,h2,h3{font-family:var(--font-d);text-wrap:balance;line-height:1.14;margin:0 0 .5em}
+h1{font-size:clamp(28px,5.4vw,42px)}
+h2{font-size:26px}
+h3{font-size:18px}
+p{margin:0 0 .8em}
+ul,ol{margin:0 0 .8em;padding-left:1.2em}
+li{margin:.2em 0}
+.lead{color:var(--muted);max-width:62ch;font-size:18px}
+.muted{color:var(--muted)}
+.small{font-size:14.5px}
+.kicker{font:600 13px var(--font-b);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px}
+.grid3{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin:18px 0}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.stack{display:grid;gap:12px;margin-bottom:14px}
+.btn{font:600 16px var(--font-b);padding:12px 20px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;min-height:46px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.choice[aria-pressed="true"],.scale button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.link{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font:500 14px var(--font-b);padding:8px 0}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+input[type=text]{font:500 17px var(--font-b);padding:11px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);min-width:0}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent);margin-right:10px;vertical-align:-4px}
+.checks{list-style:none;padding:0;margin:0}
+.checks li{margin:.55em 0}
+.checks label,.consent{cursor:pointer;display:block}
+.consent{margin:16px 0}
+.field label{font-weight:600}
+.field input[type=text]{width:100%;margin-top:8px}
+.code{font-size:30px;letter-spacing:.12em;margin:4px 0}
+.dot{font-family:var(--font-dot);font-variant-numeric:tabular-nums}
+.steps li{margin:.5em 0}
+.scale{display:flex;gap:8px;margin:10px 0 4px}
+.scale button{flex:1;font:600 17px var(--font-b);padding:12px 0;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.scalelabels{display:flex;justify-content:space-between;color:var(--muted);font-size:13.5px;gap:12px}
+textarea{width:100%;font:13px/1.45 ui-monospace,monospace;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);margin:6px 0 10px}
+.big{font:700 clamp(26px,5vw,38px)/1.2 var(--font-d);text-align:center;margin:18px 0 8px;text-wrap:balance}
+
+/* stage: HUD + robot */
+.hud{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.hud span:first-child{font:600 14px var(--font-b);color:var(--muted)}
+.hud .dot{font-size:30px}
+.bar{height:6px;background:var(--line);border-radius:6px;overflow:hidden;margin:4px 0 8px}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s linear}
+.robot{width:min(320px,100%);margin:6px auto 0}
+.robot svg{display:block;width:100%;height:auto}
+.caption{min-height:3.1em;text-align:center;margin:10px auto 12px;max-width:46ch;font-weight:500}
+@media (min-width:760px){.stack.two{grid-template-columns:1fr 1fr;align-items:start}}
+.caption.idle{color:var(--muted);font-weight:400}
+.px{fill:var(--led-dim)}
+.px.on{fill:var(--led)}
+.ring{stroke:var(--ring-idle);stroke-width:6;fill:none;transition:stroke .25s}
+svg[data-ring="listen"] .ring{stroke:var(--ring-listen);animation:pulse 1.1s ease-in-out infinite}
+svg[data-ring="speak"] .ring{stroke:var(--ring-speak);animation:pulse 1.6s ease-in-out infinite}
+svg[data-ring="think"] .ring{stroke:var(--ring-think);stroke-dasharray:30 70;animation:chase 1.3s linear infinite}
+@keyframes pulse{50%{opacity:.45}}
+@keyframes chase{to{stroke-dashoffset:-100}}
+
+/* block panels */
+.say{font-size:21px;margin-bottom:.5em}
+.pzq{font-size:34px;letter-spacing:.14em;margin:6px 0 12px}
+.pzq.seq{letter-spacing:.06em}
+#pzIn{flex:1 1 160px}
+.banner{border-left:5px solid var(--warn);background:var(--surface);border-radius:10px;padding:12px 16px;margin-bottom:12px;font-weight:600}
+.ok{color:var(--accent);font-weight:600}
+.overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.5);padding:16px;z-index:10}
+.overlay .card{max-width:380px}
+#camPreview{display:block;width:100%;max-width:360px;margin:12px 0;border-radius:12px;background:#000;transform:scaleX(-1)}
+.checks.small li{margin:.3em 0}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand" data-i="brand"></div>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="id" aria-pressed="true">ID</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Stage: robot face + HUD, shown during calibration and blocks -->
+    <div id="stage" hidden>
+      <div class="hud"><span id="hudLabel"></span><span id="hudTime" class="dot"></span></div>
+      <div class="bar"><i id="hudBar"></i></div>
+      <div class="robot">
+        <svg id="robot" viewBox="0 0 360 230" data-ring="idle" role="img" aria-label="Robot">
+          <defs>
+            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <rect x="6" y="6" width="348" height="218" rx="56" fill="var(--plate)"/>
+          <rect class="ring" x="18" y="18" width="324" height="194" rx="46" pathLength="100"/>
+          <g id="eyeL" transform="translate(60 67)" filter="url(#glow)"></g>
+          <g id="eyeR" transform="translate(204 67)" filter="url(#glow)"></g>
+        </svg>
+      </div>
+      <p id="caption" class="caption idle" aria-live="polite"></p>
+    </div>
+
+    <section id="s-intro" class="screen">
+      <div id="recoverBar" class="banner" hidden><span data-i="recoverText"></span> <button type="button" class="btn" id="btnRecover" data-i="btnRecover"></button></div>
+      <h1 data-i="introTitle"></h1>
+      <p class="lead" data-i="introLead"></p>
+      <div class="grid3">
+        <div class="card"><h3 data-i="introDoTitle"></h3>
+          <ul><li data-i="introDo1"></li><li data-i="introDo2"></li><li data-i="introDo3"></li></ul></div>
+        <div class="card"><h3 data-i="introRecTitle"></h3><p data-i="introRec"></p></div>
+        <div class="card"><h3 data-i="introRobotTitle"></h3><p data-i="introRobot"></p></div>
+        <div class="card"><h3 data-i="introVolTitle"></h3><p data-i="introVol"></p></div>
+      </div>
+      <p id="contactLine" class="muted small" hidden></p>
+      <p><button type="button" class="btn primary" id="btnToSetup" data-i="btnToSetup"></button></p>
+    </section>
+
+    <section id="s-setup" class="screen" hidden>
+      <h2 data-i="setupTitle"></h2>
+      <div class="card">
+        <ul class="checks">
+          <li><label><input type="checkbox" class="chk"><span data-i="chk1"></span></label></li>
+          <li><label><input type="checkbox" class="chk"><span data-i="chk2"></span></label></li>
+          <li><label><input type="checkbox" class="chk"><span data-i="chk3"></span></label></li>
+          <li><label><input type="checkbox" class="chk"><span data-i="chk4"></span></label></li>
+          <li><label><input type="checkbox" class="chk"><span data-i="chk5"></span></label></li>
+        </ul>
+      </div>
+      <div class="grid3">
+        <div class="card field">
+          <label for="robotName" data-i="nameLabel"></label>
+          <input type="text" id="robotName" maxlength="14" autocomplete="off">
+        </div>
+        <div class="card field">
+          <label><input type="checkbox" id="voiceChk"><span data-i="voiceLabel"></span></label>
+          <p id="voiceNote" class="muted small"></p>
+        </div>
+        <div class="card field">
+          <div class="muted small" data-i="codeLabel"></div>
+          <div id="sessCode" class="dot code"></div>
+          <p class="small muted" data-i="codeHelp"></p>
+        </div>
+      </div>
+      <div class="grid3" id="inviteWrap">
+        <div class="card field">
+          <label for="inviteIn" data-i="inviteLabel"></label>
+          <input type="text" id="inviteIn" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        </div>
+      </div>
+      <div class="card" id="camCard" style="margin:14px 0">
+        <h3 data-i="camTitle"></h3>
+        <p class="small muted" data-i="camHelp"></p>
+        <button type="button" class="btn" id="camBtn" data-i="camBtn"></button>
+        <div id="camBox" hidden>
+          <video id="camPreview" playsinline muted></video>
+          <ul class="checks small"><li id="chkCam"></li><li id="chkLight"></li><li id="chkFace"></li></ul>
+        </div>
+        <p id="camMsg" class="small" aria-live="polite"></p>
+      </div>
+      <label class="consent"><input type="checkbox" id="consentChk"><span data-i="consentLabel"></span>
+        <a id="consentLink" href="#" target="_blank" rel="noopener" hidden data-i="consentLink"></a></label>
+      <p><button type="button" class="btn primary" id="btnStart" disabled data-i="btnStart"></button></p>
+      <p class="muted small" data-i="startHint"></p>
+    </section>
+
+    <section id="s-calib" class="screen" hidden>
+      <p id="calibText" class="big" aria-live="assertive"></p>
+      <p class="muted" style="text-align:center" data-i="calibTip"></p>
+    </section>
+
+    <section id="s-blockintro" class="screen" hidden>
+      <p class="kicker" id="biKicker"></p>
+      <h2 id="biTitle"></h2>
+      <p class="lead" id="biText"></p>
+      <p><button type="button" class="btn primary" id="btnBlockStart" data-i="btnBlockStart"></button></p>
+    </section>
+
+    <section id="s-block" class="screen" hidden>
+      <div id="breakBanner" class="banner" role="status" hidden></div>
+      <div class="stack two">
+        <div class="card">
+          <div class="kicker" data-i="cardLabel"></div>
+          <p class="say"><span id="wake" class="muted"></span> <strong id="say"></strong></p>
+          <p class="small muted" data-i="spokeHint"></p>
+          <div class="row">
+            <button type="button" id="btnAsk" class="btn primary" data-i="btnAsk"></button>
+            <button type="button" id="btnSkip" class="btn" data-i="btnSkip"></button>
+          </div>
+          <p id="nudge" class="small muted" style="margin:10px 0 0" hidden data-i="nudge"></p>
+        </div>
+        <div id="pzWrap" class="card">
+          <div class="kicker" id="pzKicker"></div>
+          <div id="pzQ" class="pzq dot"></div>
+          <div class="row">
+            <input type="text" id="pzIn" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Answer">
+            <button type="button" id="pzCheck" class="btn" data-i="btnCheck"></button>
+            <button type="button" id="pzSkip" class="btn ghost" data-i="btnPzSkip"></button>
+          </div>
+          <p id="pzMsg" class="small" style="margin:10px 0 0" aria-live="polite"></p>
+        </div>
+        <div id="freeWrap" class="card" hidden>
+          <h3 data-i="freeTitle"></h3><p style="margin:0" data-i="freeText"></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="s-rate" class="screen" hidden>
+      <h2 data-i="rateTitle"></h2>
+      <div class="stack">
+        <div class="card">
+          <p data-i="q1"></p>
+          <div class="scale" id="arousalBtns" role="group" aria-label="1-5">
+            <button type="button" data-v="1" aria-pressed="false">1</button>
+            <button type="button" data-v="2" aria-pressed="false">2</button>
+            <button type="button" data-v="3" aria-pressed="false">3</button>
+            <button type="button" data-v="4" aria-pressed="false">4</button>
+            <button type="button" data-v="5" aria-pressed="false">5</button>
+          </div>
+          <div class="scalelabels"><span data-i="q1lo"></span><span data-i="q1hi"></span></div>
+        </div>
+        <div class="card">
+          <p data-i="q2"></p>
+          <div class="row" id="botherBtns" role="group">
+            <button type="button" class="btn choice" data-v="no" aria-pressed="false" data-i="q2no"></button>
+            <button type="button" class="btn choice" data-v="yes" aria-pressed="false" data-i="q2yes"></button>
+          </div>
+        </div>
+      </div>
+      <p><button type="button" id="btnRateNext" class="btn primary" disabled></button></p>
+    </section>
+
+    <section id="s-end" class="screen" hidden>
+      <h1 data-i="endTitle"></h1>
+      <div class="stack">
+        <div class="card">
+          <p data-i="enjoy"></p>
+          <div class="scale" id="enjoyBtns" role="group" aria-label="1-5">
+            <button type="button" data-v="1" aria-pressed="false">1</button>
+            <button type="button" data-v="2" aria-pressed="false">2</button>
+            <button type="button" data-v="3" aria-pressed="false">3</button>
+            <button type="button" data-v="4" aria-pressed="false">4</button>
+            <button type="button" data-v="5" aria-pressed="false">5</button>
+          </div>
+          <div class="scalelabels"><span data-i="enjoyLo"></span><span data-i="enjoyHi"></span></div>
+        </div>
+          <div class="card" id="upCard">
+          <h3 data-i="uploadTitle"></h3>
+          <p id="upInfo" class="small muted"></p>
+          <div class="bar"><i id="upBar"></i></div>
+          <p id="upMsg" class="small" aria-live="polite"></p>
+          <div class="row">
+            <button type="button" id="btnSend" class="btn primary" disabled data-i="btnSend"></button>
+            <button type="button" id="btnRetry" class="btn" hidden data-i="btnRetry"></button>
+          </div>
+          <div id="dlRow" class="row" style="margin-top:10px" hidden></div>
+        </div>
+        <p class="muted" style="margin:0" data-i="endFun"></p>
+        <div class="card">
+          <h3 data-i="logTitle"></h3>
+          <p class="small muted" data-i="logHelp"></p>
+          <textarea id="logOut" readonly rows="6" aria-label="Session log"></textarea>
+          <div class="row">
+            <button type="button" id="btnCopy" class="btn" data-i="btnCopy"></button>
+            <button type="button" id="btnDl" class="btn ghost" data-i="btnDl"></button>
+          </div>
+          <p id="copyMsg" class="small" style="margin:10px 0 0" aria-live="polite"></p>
+        </div>
+      </div>
+    </section>
+
+    <p style="text-align:center"><button type="button" id="btnAbort" class="link" hidden data-i="btnAbort"></button></p>
+  </main>
+</div>
+
+<div id="confirm" class="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="confirmQ">
+    <p id="confirmQ" style="font-weight:600" data-i="abortQ"></p>
+    <div class="row">
+      <button type="button" id="abortYes" class="btn primary" data-i="abortYes"></button>
+      <button type="button" id="abortNo" class="btn" data-i="abortNo"></button>
+    </div>
+  </div>
+</div>
+
+<video id="camFeed" playsinline muted aria-hidden="true" style="position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none"></video>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- Settings (edit here) ---------- */
+const CONFIG = {
+  CONSENT_URL: '',     // link to your consent form (optional)
+  RESEARCHER: '',      // researcher name (optional)
+  CONTACT: '',         // contact shown on the first screen (optional)
+  SEND_TO: '',         // where participants send the video (optional)
+  BLOCK_SECONDS: { A: 180, B: 180, C: 180 },
+  CALIB_SECONDS: 5,
+  BREAK_SECONDS: 15,
+  BLOCK_RATINGS: true,
+  ENDPOINT: '',            // Apps Script web app URL. Empty = demo mode (files offered for download, nothing is sent)
+  MODE: 'video',           // 'video' = record and upload video; 'features' = upload head-pose numbers only (no video, no audio)
+  VIDEO_BPS: 1500000,
+  CHUNK: 3 * 1024 * 1024   // upload chunk size in bytes; must be a multiple of 262144
+};
+const FAST = /fast/.test((location.search + ' ' + location.hash).toLowerCase());
+if (FAST) {
+  for (const k in CONFIG.BLOCK_SECONDS) CONFIG.BLOCK_SECONDS[k] = 12;
+  CONFIG.CALIB_SECONDS = 2; CONFIG.BREAK_SECONDS = 3;
+}
+
+const MODE = (new URLSearchParams(location.search).get('mode') === 'features') ? 'features' : CONFIG.MODE;
+const WANT_VIDEO = MODE !== 'features';
+const DEMO = !CONFIG.ENDPOINT;
+
+/* ---------- Text ---------- */
+const T = {
+  id: {
+    brand:'Sesi Robot Meja',
+    introTitle:'Temani robot meja kecil selama sekitar 11 menit',
+    introLead:'Kamu akan mengerjakan teka-teki ringan sambil sesekali bicara ke robot meja tiruan. Penelitian ini mempelajari bagaimana orang berinteraksi dengan robot di meja kerja.',
+    introDoTitle:'Yang akan kamu lakukan',
+    introDo1:'Bagian 1: teka-teki kata, sambil bicara ke robot kapan pun kamu mau.',
+    introDo2:'Bagian 2: teka-teki angka dengan beberapa jeda santai.',
+    introDo3:'Bagian 3: bebas, lakukan apa saja yang kamu suka.',
+    introRecTitle:'Yang direkam',
+    introRec:'Kamera depan ponselmu merekam wajah, bahu, dan suaramu selama sesi, memakai aplikasi kamera bawaan. Halaman ini sendiri tidak merekam, tidak mengirim, dan tidak menyimpan apa pun.',
+    introRobotTitle:'Soal robotnya',
+    introRobot:'Robot ini tiruan. Ia tidak melihat atau mendengarmu, dan balasannya sudah disiapkan. Itu memang disengaja.',
+    introVolTitle:'Sukarela',
+    introVol:'Kamu boleh berhenti kapan saja dan boleh meminta rekamanmu dihapus. Tidak ada jawaban benar atau salah.',
+    contact:'Peneliti: {who}. Kontak: {c}.',
+    btnToSetup:'Lanjut ke persiapan',
+    setupTitle:'Persiapan (sekitar 2 menit)',
+    chk1:'Ponselku bersandar diam di dudukan, kamera depan menghadap aku, tepat di samping atau di atas layar laptop.',
+    chk2:'Wajah dan bahuku terlihat penuh di layar ponsel, jarak sekitar 50 sampai 80 cm.',
+    chk3:'Cahaya datang dari depan atau samping, bukan dari belakangku.',
+    chk4:'Ruangan cukup tenang dan suara laptop menyala.',
+    chk5:'Aplikasi kamera ponsel sedang merekam video dengan kamera depan.',
+    nameLabel:'Beri nama robotmu',
+    voiceLabel:'Suara robot (opsional)',
+    voiceNA:'Suara tidak tersedia di perangkat ini. Balasan tampil sebagai teks.',
+    codeLabel:'Kode sesimu',
+    codeHelp:'Tulis kode ini di nama file videomu.',
+    consentLabel:'Aku sudah membaca informasi tadi dan setuju ikut.',
+    consentLink:'Formulir persetujuan',
+    btnStart:'Mulai sesi',
+    startHint:'Pastikan ponsel sudah merekam, lalu tekan Mulai. Akan ada bunyi bip sebentar; tetap diam.',
+    beepNote:'Bip sinkronisasi. Tetap diam sebentar.',
+    calibHud:'Kalibrasi',
+    calibLook:'Tatap robot',
+    calibAway:'Sekarang lihat ke arah lain',
+    calibTip:'Duduk senyaman biasanya dan tetap di dalam bingkai ponsel.',
+    blockA:'Bagian 1 dari 3',
+    blockB:'Bagian 2 dari 3',
+    blockC:'Bagian 3 dari 3',
+    titleA:'Teka-teki kata',
+    titleB:'Teka-teki angka dan jeda',
+    titleC:'Waktu bebas',
+    textA:'Susun huruf acak menjadi kata. Kapan pun kamu mau, bicara ke robot sesuai kartu: ucapkan kalimat di kartu dengan suara jelas, lalu tekan Spasi supaya robot menjawab. Tidak ada target dan tidak ada skor.',
+    textB:'Lengkapi deret angka. Sesekali muncul pesan jeda, seperti minum atau melihat ponsel lain. Lakukan secara santai, itu bukan untuk robot. Kamu tetap boleh bicara ke robot kapan pun.',
+    textC:'Lakukan apa pun yang kamu suka: membaca, bekerja, atau main ponsel. Tanya robot kapan pun kamu mau. Kartu hanya saran.',
+    btnBlockStart:'Mulai bagian ini',
+    cardLabel:'Kartu',
+    wake:'Hai, {n},',
+    spokeHint:'Bicara dulu, lalu tekan Spasi.',
+    btnAsk:'Robot, jawab (Spasi)',
+    btnSkip:'Ganti kartu (S)',
+    nudge:'Siap bertanya kapan pun kamu mau. Tidak ada target.',
+    pzWord:'Susun jadi kata',
+    pzSeq:'Lengkapi deretnya',
+    btnCheck:'Periksa',
+    btnPzSkip:'Lewati',
+    pzOk:'Benar!',
+    pzNo:'Belum pas, coba lagi.',
+    freeTitle:'Waktu bebas',
+    freeText:'Tidak ada tugas. Lakukan apa saja, dan ajak robot bicara jika kamu mau.',
+    br1:'Jeda: minum seteguk air.',
+    br2:'Jeda: lihat ke ponsel lain atau ke luar jendela sebentar.',
+    br3:'Jeda: ucapkan sesuatu pada dirimu sendiri atau pada orang di ruangan, bukan pada robot.',
+    stIdle:'Menunggu', stListen:'Mendengarkan', stThink:'Berpikir',
+    rateTitle:'Satu pertanyaan cepat',
+    q1:'Bagaimana perasaanmu selama bagian tadi?',
+    q1lo:'Sangat tenang', q1hi:'Sangat bersemangat atau tegang',
+    q2:'Seandainya robot menyapa sekarang, apakah itu mengganggu?',
+    q2no:'Tidak mengganggu', q2yes:'Mengganggu',
+    btnNext:'Lanjut', btnFinish:'Selesai',
+    endTitle:'Selesai, terima kasih!',
+    endS1:'Hentikan perekaman di ponselmu.',
+    endS2:'Tulis kode sesimu di nama file atau pesanmu: {code}',
+    endS3:'Kirim videonya ke: {where}',
+    researcher:'peneliti',
+    enjoy:'Seberapa menyenangkan sesi tadi?',
+    enjoyLo:'Kurang', enjoyHi:'Seru banget',
+    endFun:'Satu hal kecil: robot tadi tidak melihatmu. Ia berkedip sendiri, dan semua balasannya sudah disiapkan.',
+    logTitle:'Catatan sesi (opsional)',
+    logHelp:'Berisi waktu tiap bagian dan kartu, tanpa video atau suara. Boleh kamu kirim bersama videonya.',
+    btnCopy:'Salin catatan', btnDl:'Unduh .csv',
+    copied:'Tersalin.',
+    copyFail:'Tidak bisa menyalin otomatis. Pilih teks di atas lalu salin manual.',
+    btnAbort:'Akhiri sesi',
+    abortQ:'Akhiri sesi sekarang?', abortYes:'Ya, akhiri', abortNo:'Lanjutkan'
+  },
+  en: {
+    brand:'Desk Robot Session',
+    introTitle:'Keep a small desk robot company for about 11 minutes',
+    introLead:'You will work on light puzzles and, now and then, talk to a pretend desk robot. This study looks at how people interact with a robot on a work desk.',
+    introDoTitle:'What you will do',
+    introDo1:'Part 1: word puzzles, talking to the robot whenever you like.',
+    introDo2:'Part 2: number puzzles with a few relaxed breaks.',
+    introDo3:'Part 3: free time, do whatever you like.',
+    introRecTitle:'What is recorded',
+    introRec:'Your phone\'s front camera records your face, shoulders and voice during the session, using the built-in camera app. This page itself does not record, send or store anything.',
+    introRobotTitle:'About the robot',
+    introRobot:'The robot is a stand-in. It cannot see or hear you, and its replies are prepared in advance. That is on purpose.',
+    introVolTitle:'Voluntary',
+    introVol:'You can stop at any time and ask for your recording to be deleted. There are no right or wrong answers.',
+    contact:'Researcher: {who}. Contact: {c}.',
+    btnToSetup:'Continue to setup',
+    setupTitle:'Setup (about 2 minutes)',
+    chk1:'My phone leans still on a stand, front camera facing me, right beside or above the laptop screen.',
+    chk2:'My face and shoulders are fully visible on the phone screen, about 50 to 80 cm away.',
+    chk3:'Light comes from the front or side, not from behind me.',
+    chk4:'The room is fairly quiet and the laptop sound is on.',
+    chk5:'The phone camera app is recording video with the front camera.',
+    nameLabel:'Name your robot',
+    voiceLabel:'Robot voice (optional)',
+    voiceNA:'Voice is not available on this device. Replies appear as text.',
+    codeLabel:'Your session code',
+    codeHelp:'Write this code in your video file name.',
+    consentLabel:'I have read the information above and agree to take part.',
+    consentLink:'Consent form',
+    btnStart:'Start session',
+    startHint:'Make sure the phone is recording, then press Start. A short beep will play; stay still.',
+    beepNote:'Sync beep. Stay still for a moment.',
+    calibHud:'Calibration',
+    calibLook:'Look at the robot',
+    calibAway:'Now look somewhere else',
+    calibTip:'Sit as you normally would and stay inside the phone frame.',
+    blockA:'Part 1 of 3',
+    blockB:'Part 2 of 3',
+    blockC:'Part 3 of 3',
+    titleA:'Word puzzles',
+    titleB:'Number puzzles and breaks',
+    titleC:'Free time',
+    textA:'Unscramble the letters into a word. Whenever you like, talk to the robot using the card: say the sentence on the card out loud, then press Space so the robot replies. There is no target and no score.',
+    textB:'Complete the number sequences. Now and then a break message appears, such as drinking water or checking another phone. Do it casually, it is not for the robot. You can still talk to the robot any time.',
+    textC:'Do whatever you like: read, work, or use your phone. Ask the robot whenever you want. Cards are only suggestions.',
+    btnBlockStart:'Start this part',
+    cardLabel:'Card',
+    wake:'Hey, {n},',
+    spokeHint:'Speak first, then press Space.',
+    btnAsk:'Robot, reply (Space)',
+    btnSkip:'Change card (S)',
+    nudge:'Ready whenever you want to ask. There is no target.',
+    pzWord:'Unscramble the word',
+    pzSeq:'Complete the sequence',
+    btnCheck:'Check',
+    btnPzSkip:'Skip',
+    pzOk:'Correct!',
+    pzNo:'Not quite, try again.',
+    freeTitle:'Free time',
+    freeText:'No task. Do anything you like, and talk to the robot if you want to.',
+    br1:'Break: take a sip of water.',
+    br2:'Break: look at another phone or out of the window for a moment.',
+    br3:'Break: say something to yourself or to someone in the room, not to the robot.',
+    stIdle:'Waiting', stListen:'Listening', stThink:'Thinking',
+    rateTitle:'One quick question',
+    q1:'How did you feel during that part?',
+    q1lo:'Very calm', q1hi:'Very excited or tense',
+    q2:'If the robot greeted you right now, would that bother you?',
+    q2no:'It would not bother me', q2yes:'It would bother me',
+    btnNext:'Continue', btnFinish:'Finish',
+    endTitle:'Done, thank you!',
+    endS1:'Stop the recording on your phone.',
+    endS2:'Write your session code in the file name or message: {code}',
+    endS3:'Send the video to: {where}',
+    researcher:'the researcher',
+    enjoy:'How enjoyable was the session?',
+    enjoyLo:'Not much', enjoyHi:'Really fun',
+    endFun:'One small thing: the robot never saw you. It blinked on its own, and all its replies were prepared in advance.',
+    logTitle:'Session notes (optional)',
+    logHelp:'Contains the timing of each part and card, with no video or audio. You may send it along with the video.',
+    btnCopy:'Copy notes', btnDl:'Download .csv',
+    copied:'Copied.',
+    copyFail:'Could not copy automatically. Select the text above and copy it manually.',
+    btnAbort:'End session',
+    abortQ:'End the session now?', abortYes:'Yes, end it', abortNo:'Keep going'
+  }
+};
+
+/* v2 text: webcam recording and upload (overrides and additions to the strings above) */
+Object.assign(T.id, {
+  introRec: MODE === 'features'
+    ? 'Halaman ini menghitung arah kepalamu langsung di perangkatmu dan hanya mengirim angka, tanpa video dan tanpa suara.'
+    : 'Halaman ini merekam video wajah dan suaramu lewat kamera dan mikrofon laptop selama sesi, lalu mengirimnya ke penyimpanan peneliti di Google Drive dengan akses terbatas. Detailnya ada di formulir persetujuan.',
+  chk1:'Aku duduk di depan laptop, wajah dan bahuku terlihat penuh di pratinjau, jarak sekitar 50 sampai 80 cm.',
+  chk2:'Laptop berdiri stabil dan layarnya tidak kumiringkan selama sesi.',
+  chk3:'Cahaya datang dari depan atau samping, bukan dari belakangku.',
+  chk4:'Ruangan cukup tenang. Headset boleh dipakai.',
+  chk5:'Aku akan membiarkan halaman ini terbuka sampai muncul tulisan Terkirim.',
+  startHint:'Pastikan pratinjau kamera terlihat baik, lalu tekan Mulai. Rekaman dimulai saat itu juga.',
+  beepNote:'Rekaman dimulai. Duduk seperti biasa.',
+  inviteLabel:'Kode undangan dari peneliti',
+  camTitle:'Cek kamera',
+  camHelp: WANT_VIDEO ? 'Izinkan kamera dan mikrofon saat browser bertanya. Pratinjau hanya untuk memeriksa posisi.' : 'Izinkan kamera saat browser bertanya. Mikrofon tidak dipakai.',
+  camBtn:'Aktifkan kamera', camOk:'Kamera aktif', camNo:'Kamera belum aktif',
+  camDenied:'Izin kamera ditolak. Aktifkan izinnya di pengaturan browser lalu muat ulang halaman.',
+  camDark:'Cahaya terlalu gelap, tambah cahaya dari depan', camLightOk:'Cahaya cukup',
+  faceOk:'Wajah terdeteksi dengan ukuran pas', faceFar:'Wajah terlalu kecil, mendekatlah', faceNear:'Wajah terlalu besar, mundurlah',
+  faceNone:'Wajah belum terdeteksi', faceLoading:'Memuat pemeriksa wajah...',
+  faceNA:'Pemeriksa wajah tidak tersedia, pastikan wajah dan bahumu terlihat penuh',
+  uploadTitle:'Kirim rekaman',
+  upInfoVid:'Video dan catatan sesi (kode {code}) dikirim ke penyimpanan peneliti. Jangan tutup halaman sampai muncul tulisan Terkirim.',
+  upInfoFeat:'Hanya angka pose kepala dan catatan sesi (kode {code}) yang dikirim. Tidak ada video.',
+  upDemo:'Mode uji: tidak ada tujuan unggah. Berkas disimpan di perangkatmu.',
+  upRate:'Beri nilai di atas dulu, lalu tekan Kirim.',
+  btnSend:'Kirim rekaman', btnRetry:'Coba kirim lagi',
+  uploading:'Mengirim {n}: {p}%',
+  upDone:'Terkirim. Terima kasih! Kode sesimu {code}. Kamu boleh menutup halaman.',
+  upFail:'Pengiriman gagal. Coba lagi, atau simpan berkas di bawah dan kirim ke peneliti.',
+  upNone:'Tidak ada data untuk dikirim.', upDemoMsg:'Simpan berkas di bawah.', btnDl2:'Simpan {n}',
+  recoverText:'Ada rekaman yang belum terkirim dari sesi sebelumnya.', btnRecover:'Kirim sekarang',
+  logHelp:'Berisi waktu tiap bagian dan kartu. Ikut terkirim otomatis bersama rekaman.'
+});
+Object.assign(T.en, {
+  introRec: MODE === 'features'
+    ? 'This page computes your head direction right on your device and only sends numbers, with no video and no audio.'
+    : 'This page records video of your face and voice through your laptop camera and microphone during the session, then sends it to the researcher\'s access-restricted Google Drive. Details are in the consent form.',
+  chk1:'I am sitting in front of the laptop, my face and shoulders are fully visible in the preview, about 50 to 80 cm away.',
+  chk2:'The laptop is stable and I will not tilt the screen during the session.',
+  chk3:'Light comes from the front or side, not from behind me.',
+  chk4:'The room is fairly quiet. Headsets are fine.',
+  chk5:'I will keep this page open until it says Sent.',
+  startHint:'Make sure the camera preview looks good, then press Start. Recording begins right away.',
+  beepNote:'Recording has started. Sit as you normally would.',
+  inviteLabel:'Invite code from the researcher',
+  camTitle:'Camera check',
+  camHelp: WANT_VIDEO ? 'Allow the camera and microphone when the browser asks. The preview is only to check your position.' : 'Allow the camera when the browser asks. The microphone is not used.',
+  camBtn:'Turn on camera', camOk:'Camera on', camNo:'Camera not on yet',
+  camDenied:'Camera permission was denied. Allow it in the browser settings and reload the page.',
+  camDark:'Too dark, add light from the front', camLightOk:'Light is fine',
+  faceOk:'Face detected at a good size', faceFar:'Face too small, move closer', faceNear:'Face too large, move back',
+  faceNone:'No face detected yet', faceLoading:'Loading face check...',
+  faceNA:'Face check unavailable, make sure your face and shoulders are fully visible',
+  uploadTitle:'Send the recording',
+  upInfoVid:'The video and session notes (code {code}) are sent to the researcher\'s storage. Do not close the page until it says Sent.',
+  upInfoFeat:'Only head-pose numbers and session notes (code {code}) are sent. No video.',
+  upDemo:'Test mode: there is no upload destination. Files are saved on your device.',
+  upRate:'Rate the session above first, then press Send.',
+  btnSend:'Send recording', btnRetry:'Try sending again',
+  uploading:'Sending {n}: {p}%',
+  upDone:'Sent. Thank you! Your session code is {code}. You may close the page.',
+  upFail:'Sending failed. Try again, or save the files below and send them to the researcher.',
+  upNone:'There is nothing to send.', upDemoMsg:'Save the files below.', btnDl2:'Save {n}',
+  recoverText:'There is a recording from an earlier session that was not sent.', btnRecover:'Send now',
+  logHelp:'Contains the timing of each part and card. It is sent automatically with the recording.'
+});
+
+/* ---------- Cards, replies, puzzles ---------- */
+const hhmm = l => new Date().toLocaleTimeString(l === 'id' ? 'id-ID' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+const CARDS = [
+  { k:'time',  emo:'happy',
+    say:{ id:'jam berapa sekarang?', en:'what time is it?' },
+    rep:{ id:() => 'Sekarang pukul ' + hhmm('id') + '.', en:() => 'It is ' + hhmm('en') + ' now.' } },
+  { k:'riddle', emo:'happy',
+    say:{ id:'ceritakan satu tebak-tebakan.', en:'tell me a riddle.' },
+    rep:{ id:() => 'Apa yang selalu naik tapi tidak pernah turun? Umur!', en:() => 'What goes up but never comes down? Your age!' } },
+  { k:'greet', emo:'happy',
+    say:{ id:'(sapa aku dalam bahasa daerahmu)', en:'(greet me in your home language)' },
+    rep:{ id:() => 'Aku belum paham bahasa itu, tapi kedengarannya hangat. Terima kasih sudah menyapa!', en:() => 'I do not know that language yet, but it sounds warm. Thanks for the greeting!' } },
+  { k:'weather', emo:'curious',
+    say:{ id:'bagaimana cuaca hari ini?', en:'how is the weather today?' },
+    rep:{ id:() => 'Aku belum bisa melihat langit. Coba tanya jendelamu!', en:() => 'I cannot see the sky yet. Try asking your window!' } },
+  { k:'howare', emo:'happy',
+    say:{ id:'apa kabar?', en:'how are you?' },
+    rep:{ id:() => 'Baik! Baterai penuh dan mataku berkedip-kedip.', en:() => 'Good! Battery full and my eyes are blinking.' } },
+  { k:'cheer', emo:'happy',
+    say:{ id:'tolong semangati aku.', en:'please cheer me up.' },
+    rep:{ id:() => 'Kamu sudah melakukan satu hal hari ini: duduk dan mencoba. Itu dihitung.', en:() => 'You already did one thing today: sat down and tried. That counts.' } },
+  { k:'name', emo:'happy',
+    say:{ id:'siapa namamu dan siapa yang memberi nama?', en:'what is your name and who named you?' },
+    rep:{ id:n => 'Namaku ' + n + '. Kamu yang memberiku nama, dan aku suka.', en:n => 'My name is ' + n + '. You named me, and I like it.' } },
+  { k:'math', emo:'happy',
+    say:{ id:'tujuh kali delapan berapa?', en:'what is seven times eight?' },
+    rep:{ id:() => 'Lima puluh enam!', en:() => 'Fifty-six!' } },
+  { k:'fact', emo:'surprised',
+    say:{ id:'ceritakan satu fakta menarik.', en:'tell me an interesting fact.' },
+    rep:{ id:() => 'Gurita punya tiga jantung.', en:() => 'An octopus has three hearts.' } },
+  { k:'alone', emo:'sleepy',
+    say:{ id:'apa yang kamu lakukan kalau tidak ada orang?', en:'what do you do when nobody is around?' },
+    rep:{ id:() => 'Aku berkedip dan menghitung detik. Jadi sepi pun tidak membosankan.', en:() => 'I blink and count seconds. So quiet is never boring.' } },
+  { k:'like', emo:'happy',
+    say:{ id:'ceritakan satu hal yang kamu suka.', en:'tell me one thing you like.' },
+    rep:{ id:() => 'Aku suka cahaya lampu meja di sore hari.', en:() => 'I like the glow of a desk lamp in the evening.' } },
+  { k:'bye', emo:'sleepy',
+    say:{ id:'aku lanjut bekerja dulu, sampai nanti.', en:'I will get back to work, see you later.' },
+    rep:{ id:() => 'Sampai nanti! Aku menunggu di sini.', en:() => 'See you later! I will be right here.' } }
+];
+const FREE = { k:'free', emo:'curious', say:{ id:'(tanyakan apa saja)', en:'(ask anything)' } };
+const FREE_REPLIES = {
+  id:['Pertanyaan bagus! Aku masih belajar, coba tanya hal lain.', 'Hmm, aku perlu memikirkannya lebih lama. Sementara itu, aku berkedip dulu.', 'Menarik sekali! Aku mencatatnya di kepala kecilku.'],
+  en:['Good question! I am still learning, try asking something else.', 'Hmm, I need to think about that longer. Meanwhile, I will blink.', 'How interesting! I will note it down in my little head.']
+};
+const WORDS = {
+  id:['KUCING','SEPEDA','BANDARA','PELANGI','KOMPUTER','SEKOLAH','JENDELA','MATAHARI','KEBUN','SAMUDRA','KEMBANG','LAMPION'],
+  en:['ROBOT','WINDOW','BRIDGE','GARDEN','PLANET','COFFEE','SILVER','ORANGE','THUNDER','PENCIL','MARKET','CANDLE']
+};
+const SEQ = [['2, 4, 8, 16, ?','32'],['3, 6, 9, 12, ?','15'],['1, 1, 2, 3, 5, ?','8'],['5, 10, 20, 40, ?','80'],
+  ['100, 90, 80, 70, ?','60'],['2, 3, 5, 7, 11, ?','13'],['1, 4, 9, 16, ?','25'],['7, 14, 21, 28, ?','35'],
+  ['81, 27, 9, 3, ?','1'],['1, 2, 4, 7, 11, ?','16'],['64, 32, 16, 8, ?','4'],['10, 9, 7, 4, ?','0']];
+
+/* ---------- Helpers & state ---------- */
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+const pad = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+const S = {
+  lang:'id', name:'Buddy', voiceOn:false, voiceOk:false, voiceTouched:false,
+  code:'', t0:null, wall0:null, log:[], aborted:false, cancel:null,
+  block:null, blockReplies:0, card:null, deck:shuffle(CARDS), di:0, cAlt:0,
+  busy:false, stageOn:false, pz:null, tickT:null, blockResolve:null, sched:[], screen:'s-intro', enjoy:null
+};
+const t = (key, vars) => {
+  let s = (T[S.lang] && T[S.lang][key]) ?? T.id[key] ?? key;
+  if (vars) for (const k in vars) s = s.replace('{' + k + '}', vars[k]);
+  return s;
+};
+const SCREENS = ['s-intro','s-setup','s-calib','s-blockintro','s-block','s-rate','s-end'];
+
+function logEv(type, detail = '') {
+  if (S.t0 == null) return;
+  S.log.push({ t: Math.round(performance.now() - S.t0), type, detail: String(detail) });
+  if (S.screen === 's-end') $('logOut').value = csvText();
+}
+function csvText() {
+  const q = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const head = ['# session_code=' + S.code, '# session_start_wallclock=' + (S.wall0 ? S.wall0.toISOString() : ''), '# lang=' + S.lang, '# page_version=2', 't_ms,event,detail'];
+  return head.concat(S.log.map(e => e.t + ',' + e.type + ',' + q(e.detail))).join('\n');
+}
+
+/* ---------- Audio ---------- */
+let AC = null;
+function ac() {
+  try {
+    if (!AC) { const C = window.AudioContext || window.webkitAudioContext; if (C) AC = new C(); }
+    if (AC && AC.state === 'suspended') AC.resume();
+  } catch (e) { AC = null; }
+  return AC;
+}
+function sweep(f1, f2, dur, at = 0, gain = 0.18, type = 'triangle') {
+  try {
+    const a = ac(); if (!a) return;
+    const t0 = a.currentTime + at, o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(f1, t0); o.frequency.linearRampToValueAtTime(f2, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(gain, t0 + 0.02); g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + dur + 0.03);
+  } catch (e) {}
+}
+const CHIRP = {
+  happy:() => { sweep(600, 900, .12); sweep(800, 1200, .14, .14); },
+  curious:() => { sweep(500, 800, .15); sweep(700, 650, .12, .16); },
+  sleepy:() => sweep(700, 350, .35),
+  surprised:() => { sweep(900, 1400, .1); sweep(1400, 1100, .1, .1); },
+  neutral:() => sweep(600, 700, .1),
+  thinking:() => sweep(420, 440, .06, 0, .1)
+};
+function syncBeep() { [0, .3, .6].forEach(at => sweep(1000, 1000, .15, at, .3, 'sine')); sweep(1500, 1500, .3, .95, .3, 'sine'); }
+function chime() { sweep(660, 660, .18, 0, .12, 'sine'); }
+
+function refreshVoice() {
+  const vs = ('speechSynthesis' in window) ? speechSynthesis.getVoices() : [];
+  S.voiceOk = vs.some(v => v.lang.toLowerCase().startsWith(S.lang));
+  const chk = $('voiceChk');
+  chk.disabled = !S.voiceOk;
+  if (!S.voiceOk) chk.checked = false;
+  else if (!S.voiceTouched) chk.checked = true;
+  $('voiceNote').textContent = S.voiceOk ? '' : t('voiceNA');
+}
+function speak(text) {
+  return new Promise(res => {
+    if (!S.voiceOn || !('speechSynthesis' in window)) return res();
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      const v = speechSynthesis.getVoices().find(x => x.lang.toLowerCase().startsWith(S.lang));
+      if (!v) return res();
+      u.voice = v; u.lang = v.lang; u.pitch = 1.15; u.rate = 1;
+      u.onend = () => res(); u.onerror = () => res();
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+      setTimeout(res, 15000);
+    } catch (e) { res(); }
+  });
+}
+
+/* ---------- Robot face ---------- */
+const NS = 'http://www.w3.org/2000/svg';
+const BM = {
+  neutral:['........','..####..','.######.','.######.','.######.','.######.','..####..','........'],
+  blink:['........','........','........','........','.######.','........','........','........'],
+  happy:['........','........','..####..','.##..##.','##....##','........','........','........'],
+  wide:['.######.','########','########','########','########','########','########','.######.'],
+  sleepy:['........','........','........','########','########','.######.','..####..','........']
+};
+const FACE = {
+  neutral:{ L:'neutral', R:'neutral' }, happy:{ L:'happy', R:'happy' }, curious:{ L:'neutral', R:'wide' },
+  sleepy:{ L:'sleepy', R:'sleepy' }, surprised:{ L:'wide', R:'wide' }, thinking:{ L:'neutral', R:'neutral', dx:1, dy:-1 }
+};
+const cellsL = [], cellsR = [];
+let face = { emo:'neutral', dx:0, dy:0 };
+function buildEyes() {
+  for (const [id, arr] of [['eyeL', cellsL], ['eyeR', cellsR]]) {
+    const g = $(id);
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+      const el = document.createElementNS(NS, 'rect');
+      el.setAttribute('x', c * 12); el.setAttribute('y', r * 12);
+      el.setAttribute('width', 10); el.setAttribute('height', 10); el.setAttribute('rx', 2.5);
+      el.setAttribute('class', 'px'); g.appendChild(el); arr.push(el);
+    }
+  }
+}
+function paint(cells, bm, dx = 0, dy = 0) {
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+    const sr = r - dy, sc = c - dx;
+    const on = sr >= 0 && sr < 8 && sc >= 0 && sc < 8 && bm[sr][sc] === '#';
+    cells[r * 8 + c].classList.toggle('on', on);
+  }
+}
+function setFace(emo, dx, dy) {
+  const f = FACE[emo] || FACE.neutral;
+  face = { emo, dx: dx ?? f.dx ?? 0, dy: dy ?? f.dy ?? 0 };
+  paint(cellsL, BM[f.L], face.dx, face.dy); paint(cellsR, BM[f.R], face.dx, face.dy);
+}
+async function blink() {
+  paint(cellsL, BM.blink, face.dx, face.dy); paint(cellsR, BM.blink, face.dx, face.dy);
+  await sleep(120);
+  const f = FACE[face.emo] || FACE.neutral;
+  paint(cellsL, BM[f.L], face.dx, face.dy); paint(cellsR, BM[f.R], face.dx, face.dy);
+}
+function setRing(state) { $('robot').dataset.ring = state; }
+let idleT = null;
+// The robot never reacts to the participant: it only blinks and glances at random.
+function idleLoop() {
+  clearTimeout(idleT);
+  idleT = setTimeout(async () => {
+    if (S.stageOn && !S.busy) {
+      if (Math.random() < 0.7) await blink();
+      else if (face.emo === 'neutral') {
+        setFace('neutral', pick([-1, 1]), 0);
+        setTimeout(() => { if (face.emo === 'neutral' && !S.busy) setFace('neutral', 0, 0); }, 1100);
+      }
+    }
+    idleLoop();
+  }, 2500 + Math.random() * 3500);
+}
+function caption(text, idle) { const c = $('caption'); c.textContent = text; c.classList.toggle('idle', !!idle); }
+
+/* ---------- Screens ---------- */
+function show(id) {
+  S.screen = id;
+  SCREENS.forEach(s => { $(s).hidden = s !== id; });
+  const stage = id === 's-calib' || id === 's-block';
+  $('stage').hidden = !stage; S.stageOn = stage;
+  $('btnAbort').hidden = !['s-calib','s-blockintro','s-block','s-rate'].includes(id);
+  window.scrollTo(0, 0);
+}
+function hud(label, time, pct) {
+  $('hudLabel').textContent = label; $('hudTime').textContent = time;
+  if (pct != null) $('hudBar').style.width = pct + '%';
+}
+
+/* ---------- Language ---------- */
+function applyLang() {
+  document.documentElement.lang = S.lang;
+  document.querySelectorAll('[data-i]').forEach(el => { el.textContent = t(el.dataset.i); });
+  document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === S.lang)));
+  $('robotName').placeholder = 'Buddy';
+  const hasContact = CONFIG.RESEARCHER || CONFIG.CONTACT;
+  $('contactLine').hidden = !hasContact;
+  if (hasContact) $('contactLine').textContent = t('contact', { who: CONFIG.RESEARCHER || '-', c: CONFIG.CONTACT || '-' });
+  $('consentLink').hidden = !CONFIG.CONSENT_URL;
+  if (CONFIG.CONSENT_URL) $('consentLink').href = CONFIG.CONSENT_URL;
+  $('sessCode').textContent = S.code;
+  refreshVoice();
+  if (S.screen === 's-block' && S.card) renderCard();
+  if (S.screen === 's-block' && S.pz) renderPuzzle(true);
+  if (S.screen === 's-block' && !S.busy) caption(t('stIdle'), true);
+  if (S.screen === 's-end') renderEnd();
+  if (S.screen === 's-rate') $('btnRateNext').textContent = S.block === 'C' ? t('btnFinish') : t('btnNext');
+}
+
+/* ---------- Cards & puzzles ---------- */
+function nextCard() {
+  if (S.block === 'C' && S.cAlt++ % 2 === 0) return FREE;
+  return S.deck[S.di++ % S.deck.length];
+}
+function renderCard() {
+  $('wake').textContent = t('wake', { n: S.name });
+  $('say').textContent = S.card.say[S.lang];
+}
+function setCard(c) { S.card = c; renderCard(); logEv('card_shown', c.k); }
+function scramble(w) {
+  let s = w; for (let i = 0; i < 20 && s === w; i++) s = shuffle(w.split('')).join('');
+  return s;
+}
+function newPuzzle() {
+  if (S.block === 'A') {
+    const w = pick(WORDS[S.lang]); S.pz = { type:'word', ans:w, q:scramble(w) };
+  } else if (S.block === 'B') {
+    const [q, a] = pick(SEQ); S.pz = { type:'seq', ans:a, q };
+  } else S.pz = null;
+  renderPuzzle(false);
+}
+function renderPuzzle(keepInput) {
+  const has = !!S.pz;
+  $('pzWrap').hidden = !has; $('freeWrap').hidden = has;
+  if (!has) return;
+  $('pzKicker').textContent = t(S.pz.type === 'word' ? 'pzWord' : 'pzSeq');
+  $('pzQ').textContent = S.pz.q; $('pzQ').classList.toggle('seq', S.pz.type === 'seq');
+  if (!keepInput) { $('pzIn').value = ''; $('pzMsg').textContent = ''; }
+}
+function checkPuzzle() {
+  if (!S.pz) return;
+  const v = $('pzIn').value.trim().toUpperCase();
+  if (!v) return;
+  const msg = $('pzMsg');
+  if (v === S.pz.ans.toUpperCase()) {
+    msg.textContent = t('pzOk'); msg.className = 'small ok';
+    setTimeout(() => { if (S.pz && S.screen === 's-block') newPuzzle(); }, 700);
+  } else { msg.textContent = t('pzNo'); msg.className = 'small'; }
+}
+
+/* ---------- Robot reply ---------- */
+async function askRobot() {
+  if (S.busy || S.screen !== 's-block' || !S.card) return;
+  S.busy = true;
+  const c = S.card;
+  logEv('reply_request', c.k);
+  setRing('listen'); setFace('neutral', 0, 0); caption(t('stListen'), true); CHIRP.neutral();
+  await sleep(450);
+  if (S.aborted || S.screen !== 's-block') { S.busy = false; return; }
+  setRing('think'); setFace('thinking'); caption(t('stThink'), true); CHIRP.thinking();
+  await sleep(700 + Math.random() * 300);
+  if (S.aborted || S.screen !== 's-block') { S.busy = false; return; }
+  let text, emo;
+  if (c === FREE) { text = pick(FREE_REPLIES[S.lang]); emo = 'curious'; }
+  else { text = c.rep[S.lang](S.name); emo = c.emo; }
+  logEv('reply_start', c.k);
+  setRing('speak'); setFace(emo, 0, 0); caption(text, false); CHIRP[emo] && CHIRP[emo]();
+  const hold = Math.min(6000, Math.max(2200, text.length * 55));
+  await Promise.all([speak(text), sleep(hold)]);
+  logEv('reply_end', c.k);
+  S.busy = false;
+  if (S.aborted || S.screen !== 's-block') return;
+  setRing('idle'); setFace('neutral', 0, 0); caption(t('stIdle'), true);
+  S.blockReplies++;
+  $('nudge').hidden = true;
+  setCard(nextCard());
+}
+function skipCard() {
+  if (S.busy || S.screen !== 's-block') return;
+  logEv('card_skip', S.card ? S.card.k : '');
+  setCard(nextCard());
+}
+
+/* ---------- Session flow ---------- */
+function waitFor(setup) { return new Promise(res => { S.cancel = res; setup(res); }); }
+
+async function calibration() {
+  show('s-calib'); setRing('idle'); setFace('neutral', 0, 0); caption(t('stIdle'), true);
+  hud(t('calibHud'), '', 0);
+  $('calibText').textContent = t('beepNote');
+  await sleep(1700);
+  const phase = async (ev, key) => {
+    if (S.aborted) return;
+    logEv(ev); $('calibText').textContent = t(key);
+    for (let s = CONFIG.CALIB_SECONDS; s > 0 && !S.aborted; s--) {
+      hud(t('calibHud'), pad(s), 100 * (1 - s / CONFIG.CALIB_SECONDS)); sweep(800, 800, .05, 0, .06, 'sine');
+      await sleep(1000);
+    }
+  };
+  await phase('calib_look', 'calibLook');
+  await phase('calib_away', 'calibAway');
+  if (!S.aborted) logEv('calib_end');
+}
+
+function blockIntro(key) {
+  return waitFor(res => {
+    show('s-blockintro');
+    $('biKicker').textContent = t('block' + key); $('biTitle').textContent = t('title' + key); $('biText').textContent = t('text' + key);
+    $('btnBlockStart').onclick = () => res();
+  });
+}
+function rate(key) {
+  return waitFor(res => {
+    show('s-rate');
+    let a = null, b = null;
+    const next = $('btnRateNext');
+    next.textContent = key === 'C' ? t('btnFinish') : t('btnNext'); next.disabled = true;
+    const mark = (group, v) => group.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === v)));
+    mark($('arousalBtns'), ''); mark($('botherBtns'), '');
+    const upd = () => { next.disabled = a == null || b == null; };
+    $('arousalBtns').onclick = e => { const x = e.target.closest('button'); if (!x) return; a = x.dataset.v; mark($('arousalBtns'), a); upd(); };
+    $('botherBtns').onclick = e => { const x = e.target.closest('button'); if (!x) return; b = x.dataset.v; mark($('botherBtns'), b); upd(); };
+    next.onclick = () => { logEv('rating', 'block=' + key + ';arousal=' + a + ';bothered=' + b); res(); };
+  });
+}
+
+async function runBlock(key) {
+  await blockIntro(key);
+  if (S.aborted) return;
+  S.block = key; S.blockReplies = 0; S.busy = false;
+  show('s-block'); setRing('idle'); setFace('neutral', 0, 0); caption(t('stIdle'), true);
+  $('nudge').hidden = true; $('breakBanner').hidden = true;
+  const dur = CONFIG.BLOCK_SECONDS[key] * 1000, start = performance.now();
+  logEv('block_start', key);
+  newPuzzle();
+  setCard(nextCard());
+  S.sched = [];
+  if (key === 'B') {
+    [[.2, 'br1'], [.5, 'br2'], [.78, 'br3']].forEach(([f, id]) => S.sched.push({ at: f * dur, fn: () => {
+      const bn = $('breakBanner'); bn.textContent = t(id); bn.hidden = false; chime(); logEv('break_prompt', id);
+      setTimeout(() => { bn.hidden = true; logEv('break_end', id); }, CONFIG.BREAK_SECONDS * 1000);
+    } }));
+  } else {
+    S.sched.push({ at: .4 * dur, fn: () => { if (S.blockReplies === 0 && !S.busy) { $('nudge').hidden = false; logEv('nudge', key); } } });
+  }
+  const tick = () => {
+    const el = performance.now() - start;
+    hud(t('block' + key) + ' · ' + t('title' + key), pad(Math.max(0, Math.ceil((dur - el) / 1000))), Math.min(100, 100 * el / dur));
+    S.sched.forEach(s => { if (!s.done && el >= s.at) { s.done = true; s.fn(); } });
+    if (el >= dur) { clearInterval(S.tickT); S.blockResolve && S.blockResolve(); }
+  };
+  await new Promise(res => { S.blockResolve = res; S.cancel = res; S.tickT = setInterval(tick, 200); tick(); });
+  clearInterval(S.tickT);
+  try { speechSynthesis.cancel(); } catch (e) {}
+  S.busy = false; $('breakBanner').hidden = true;
+  if (!S.aborted) { logEv('block_end', key); chime(); }
+  if (!S.aborted && CONFIG.BLOCK_RATINGS) await rate(key);
+}
+
+async function mainFlow() {
+  await beginCapture();
+  await calibration();
+  for (const k of ['A', 'B', 'C']) { if (S.aborted) break; await runBlock(k); }
+  logEv(S.aborted ? 'session_abort' : 'session_end');
+  await stopCapture();
+  showEnd();
+}
+function renderEnd() {
+  $('upInfo').textContent = t(DEMO ? 'upDemo' : (WANT_VIDEO ? 'upInfoVid' : 'upInfoFeat'), { code: S.code });
+  if (R.upload.state === 'idle' && $('btnSend').disabled && !S.recovered) $('upMsg').textContent = t('upRate');
+  $('logOut').value = csvText();
+}
+function showEnd() { clearInterval(S.tickT); show('s-end'); setRing('idle'); renderEnd(); }
+
+function abortSession() {
+  $('confirm').hidden = true;
+  S.aborted = true;
+  clearInterval(S.tickT);
+  try { speechSynthesis.cancel(); } catch (e) {}
+  if (S.cancel) S.cancel();
+  if (S.blockResolve) S.blockResolve();
+}
+
+/* ---------- Capture: camera, recording, head-pose features ---------- */
+const MP_VER = '1.2.3';
+const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+const R = { stream:null, rec:null, chunks:[], seq:0, mime:'', ready:false, recording:false, lm:null, lmState:'idle',
+  feat:[], tick:null, face:null, light:null, blob:null, cv:null, upload:{ state:'idle' }, sent:{}, recover:null };
+const r2 = v => Math.round(v * 100) / 100;
+
+// Head rotation from MediaPipe's 4x4 column-major matrix, order YXZ. Sign convention is unverified:
+// check it in the pilot (turn head left/right, up/down) before interpreting signs. Analysis uses rest-pose deltas.
+function euler(m) {
+  const pitch = Math.asin(Math.max(-1, Math.min(1, -m[9])));
+  const yaw = Math.atan2(m[8], m[10]);
+  const roll = Math.atan2(m[1], m[5]);
+  return [yaw, pitch, roll].map(a => a * 180 / Math.PI);
+}
+
+/* IndexedDB backup so a closed tab does not lose the recording */
+const IDB = { db: null };
+const idbReq = q => new Promise(res => { q.onsuccess = () => res(q.result); q.onerror = () => res(null); });
+async function idbOpen() {
+  if (IDB.db) return IDB.db;
+  try {
+    IDB.db = await new Promise(res => {
+      const q = indexedDB.open('deskrobot', 1);
+      q.onupgradeneeded = () => { q.result.createObjectStore('chunks'); q.result.createObjectStore('meta'); };
+      q.onsuccess = () => res(q.result); q.onerror = () => res(null);
+    });
+  } catch (e) { IDB.db = null; }
+  return IDB.db;
+}
+async function idbPut(k, v) { try { const db = await idbOpen(); if (db) db.transaction('chunks', 'readwrite').objectStore('chunks').put(v, k); } catch (e) {} }
+async function idbAll() { try { const db = await idbOpen(); return db ? (await idbReq(db.transaction('chunks').objectStore('chunks').getAll())) || [] : []; } catch (e) { return []; } }
+async function idbMetaGet() { try { const db = await idbOpen(); return db ? await idbReq(db.transaction('meta').objectStore('meta').get('m')) : null; } catch (e) { return null; } }
+async function idbMetaSet(v) { try { const db = await idbOpen(); if (db) db.transaction('meta', 'readwrite').objectStore('meta').put(v, 'm'); } catch (e) {} }
+async function idbClear() {
+  try { const db = await idbOpen(); if (!db) return;
+    const tx = db.transaction(['chunks', 'meta'], 'readwrite'); tx.objectStore('chunks').clear(); tx.objectStore('meta').clear();
+    await new Promise(res => { tx.oncomplete = res; tx.onerror = res; });
+  } catch (e) {}
+}
+
+/* Camera check */
+async function enableCamera() {
+  const msg = $('camMsg'); msg.textContent = '';
+  try {
+    R.stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 }, facingMode: 'user' },
+      audio: WANT_VIDEO
+    });
+  } catch (e) { msg.textContent = t('camDenied'); return; }
+  for (const id of ['camPreview', 'camFeed']) { const v = $(id); v.srcObject = R.stream; v.muted = true; try { await v.play(); } catch (e) {} }
+  $('camBox').hidden = false; $('camBtn').hidden = true; R.ready = true;
+  clearInterval(R.tick);
+  let n = 0;
+  R.tick = setInterval(() => { n++; if (R.recording || n % 5 === 0) analyseFrame(); if (n % 5 === 0) analyseLight(); }, 100);
+  updateCheck(); loadLandmarker(); updateStart();
+}
+async function loadLandmarker() {
+  if (R.lm || R.lmState === 'loading') return;
+  R.lmState = 'loading'; updateCheck();
+  try {
+    if (window.__mockLandmarker) { R.lm = window.__mockLandmarker; R.lmState = 'ready'; }
+    else {
+      const base = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@' + MP_VER;
+      const mod = await import(base + '/vision_bundle.mjs');
+      const fs = await mod.FilesetResolver.forVisionTasks(base + '/wasm');
+      R.lm = await mod.FaceLandmarker.createFromOptions(fs, {
+        baseOptions: { modelAssetPath: MP_MODEL }, runningMode: 'VIDEO', numFaces: 1, outputFacialTransformationMatrixes: true
+      });
+      R.lmState = 'ready';
+    }
+  } catch (e) { R.lmState = 'fail'; }
+  updateCheck(); updateStart();
+}
+function analyseLight() {
+  const v = $('camFeed'); if (v.readyState < 2) return;
+  const c = R.cv || (R.cv = document.createElement('canvas')); c.width = 32; c.height = 18;
+  try {
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(v, 0, 0, 32, 18);
+    const d = g.getImageData(0, 0, 32, 18).data; let s = 0;
+    for (let i = 0; i < d.length; i += 4) s += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+    R.light = s / (d.length / 4);
+  } catch (e) {}
+  updateCheck();
+}
+function analyseFrame() {
+  const v = $('camFeed'); if (!R.lm || v.readyState < 2) return;
+  let res = null;
+  try { res = R.lm.detectForVideo(v, performance.now()); } catch (e) { return; }
+  const lms = res && res.faceLandmarks && res.faceLandmarks[0];
+  const tms = S.t0 == null ? 0 : Math.round(performance.now() - S.t0);
+  if (!lms) { R.face = null; if (R.recording) R.feat.push([tms, 0, '', '', '', '', '', '']); updateCheck(); return; }
+  let x0 = 1, x1 = 0, y0 = 1, y1 = 0;
+  for (const p of lms) { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; }
+  const m = res.facialTransformationMatrixes && res.facialTransformationMatrixes[0];
+  const e = m ? euler(m.data) : [NaN, NaN, NaN];
+  R.face = { w: x1 - x0 };
+  if (R.recording) R.feat.push([tms, 1, r2(e[0]), r2(e[1]), r2(e[2]), r2(x1 - x0), r2((x0 + x1) / 2), r2((y0 + y1) / 2)]);
+  updateCheck();
+}
+function updateCheck() {
+  if (!$('chkCam')) return;
+  $('chkCam').textContent = (R.ready ? '✓ ' : '• ') + t(R.ready ? 'camOk' : 'camNo');
+  $('chkLight').textContent = R.light == null ? '' : ((R.light < 60 ? '• ' : '✓ ') + t(R.light < 60 ? 'camDark' : 'camLightOk'));
+  let f = '';
+  if (R.lmState === 'loading') f = '• ' + t('faceLoading');
+  else if (R.lmState === 'fail') f = '• ' + t('faceNA');
+  else if (R.lmState === 'ready') {
+    if (!R.face) f = '• ' + t('faceNone');
+    else if (R.face.w < 0.18) f = '• ' + t('faceFar');
+    else if (R.face.w > 0.65) f = '• ' + t('faceNear');
+    else f = '✓ ' + t('faceOk');
+  }
+  $('chkFace').textContent = f;
+}
+
+/* Recording */
+function pickMime() {
+  const c = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4'];
+  return c.find(x => window.MediaRecorder && MediaRecorder.isTypeSupported(x)) || '';
+}
+async function beginCapture() {
+  S.t0 = performance.now(); S.wall0 = new Date();
+  logEv('session_start', S.wall0.toISOString());
+  logEv('mode', MODE);
+  R.recording = true; R.feat = []; R.chunks = []; R.seq = 0; R.blob = null; R.upload = { state: 'idle' }; R.sent = {}; S.recovered = false;
+  if (WANT_VIDEO && R.stream && window.MediaRecorder) {
+    try {
+      await idbClear();
+      R.mime = pickMime();
+      await idbMetaSet({ code: S.code, invite: S.invite, mime: R.mime, t: Date.now() });
+      R.rec = new MediaRecorder(R.stream, Object.assign({ videoBitsPerSecond: CONFIG.VIDEO_BPS, audioBitsPerSecond: 64000 }, R.mime ? { mimeType: R.mime } : {}));
+      R.rec.ondataavailable = e => { if (e.data && e.data.size) { R.chunks.push(e.data); idbPut(R.seq++, e.data); } };
+      R.rec.start(4000);
+      logEv('rec_start', R.mime || 'default');
+    } catch (e) { logEv('rec_error', e && e.message); }
+  }
+}
+function stopCapture() {
+  return new Promise(res => {
+    R.recording = false;
+    const finish = () => {
+      const type = (R.mime || 'video/webm').split(';')[0];
+      R.blob = R.chunks.length ? new Blob(R.chunks, { type }) : null;
+      clearInterval(R.tick);
+      if (R.stream) R.stream.getTracks().forEach(tr => tr.stop());
+      res();
+    };
+    if (R.rec && R.rec.state !== 'inactive') {
+      R.rec.onstop = finish;
+      try { R.rec.requestData(); R.rec.stop(); } catch (e) { finish(); }
+    } else finish();
+  });
+}
+function featCsv() {
+  const head = ['# session_code=' + S.code, '# mode=' + MODE, '# euler_order=YXZ (sign convention unverified)', '# rate_hz=10', '# face=0 rows are missing data, not negatives', 't_ms,face,yaw_deg,pitch_deg,roll_deg,bbox_w,cx,cy'];
+  return head.concat(R.feat.map(r => r.join(','))).join('\n');
+}
+
+/* Upload through the Apps Script relay (chunks are base64 in a text/plain POST, so no CORS preflight) */
+async function api(body) {
+  const r = await fetch(CONFIG.ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+  return await r.json();
+}
+const b64 = buf => {
+  const u = new Uint8Array(buf); let s = '';
+  for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(s);
+};
+async function uploadBlob(blob, name, mime, onProgress) {
+  const init = await api({ action: 'init', invite: S.invite, name, mime, size: blob.size });
+  if (!init.ok) throw new Error(init.error || 'init');
+  let off = 0, fails = 0;
+  while (off < blob.size) {
+    const end = Math.min(off + CONFIG.CHUNK, blob.size);
+    try {
+      const buf = await blob.slice(off, end).arrayBuffer();
+      const r = await api({ action: 'chunk', sid: init.sid, offset: off, total: blob.size, data: b64(buf) });
+      if (!r.ok) throw new Error(r.error || 'chunk');
+      off = typeof r.received === 'number' ? r.received : end; fails = 0;
+      onProgress(off / blob.size);
+    } catch (e) {
+      if (++fails > 6) throw e;
+      await sleep(Math.min(8000, 1000 * fails));
+      try { const st = await api({ action: 'status', sid: init.sid, total: blob.size }); if (st.ok && typeof st.received === 'number') off = st.received; } catch (e2) {}
+    }
+  }
+}
+function showDownloads(items) {
+  const row = $('dlRow'); row.textContent = '';
+  items.forEach(it => {
+    const a = document.createElement('a'); a.className = 'btn'; a.download = it.name;
+    a.href = URL.createObjectURL(it.blob); a.textContent = t('btnDl2', { n: it.name }); row.appendChild(a);
+  });
+  row.hidden = false;
+}
+async function sendAll() {
+  if (R.upload.state === 'running') return;
+  const mime = (R.mime || 'video/webm').split(';')[0], ext = mime.includes('mp4') ? 'mp4' : 'webm';
+  const items = [];
+  if (!S.recovered) {
+    items.push({ name: S.code + '_events.csv', mime: 'text/csv', blob: new Blob([csvText()], { type: 'text/csv' }) });
+    items.push({ name: S.code + '_features.csv', mime: 'text/csv', blob: new Blob([featCsv()], { type: 'text/csv' }) });
+  }
+  if (WANT_VIDEO && R.blob && R.blob.size) items.push({ name: S.code + '_video.' + ext, mime, blob: R.blob });
+  if (!items.length) { $('upMsg').textContent = t('upNone'); return; }
+  const msg = $('upMsg'); msg.className = 'small';
+  $('btnSend').hidden = true; $('btnRetry').hidden = true; $('dlRow').hidden = true;
+  if (DEMO) { showDownloads(items); msg.textContent = t('upDemoMsg'); return; }
+  R.upload.state = 'running';
+  try {
+    for (const it of items) {
+      if (R.sent[it.name]) continue;
+      await uploadBlob(it.blob, it.name, it.mime, f => {
+        $('upBar').style.width = Math.round(100 * f) + '%';
+        msg.textContent = t('uploading', { n: it.name.replace(S.code + '_', ''), p: Math.round(100 * f) });
+      });
+      R.sent[it.name] = true;
+    }
+    R.upload.state = 'done'; $('upBar').style.width = '100%';
+    msg.textContent = t('upDone', { code: S.code }); msg.className = 'small ok';
+    await idbClear();
+  } catch (e) {
+    R.upload.state = 'idle';
+    msg.textContent = t('upFail');
+    $('btnRetry').hidden = false; showDownloads(items);
+  }
+}
+async function recoverCheck() {
+  try {
+    const meta = await idbMetaGet(); const ch = await idbAll();
+    if (meta && ch.length) { R.recover = { meta, ch }; $('recoverBar').hidden = false; }
+  } catch (e) {}
+}
+function recoverSend() {
+  const { meta, ch } = R.recover;
+  S.code = meta.code; S.invite = meta.invite || ''; R.mime = meta.mime || '';
+  R.blob = new Blob(ch, { type: (R.mime || 'video/webm').split(';')[0] });
+  S.recovered = true; $('recoverBar').hidden = true;
+  show('s-end'); renderEnd(); $('btnSend').disabled = false; $('upMsg').textContent = '';
+}
+
+/* ---------- Wiring ---------- */
+function updateStart() {
+  const all = [...document.querySelectorAll('.chk')].every(c => c.checked) && $('consentChk').checked;
+  const lmOk = MODE !== 'features' || R.lmState === 'ready';
+  const inviteOk = DEMO || (S.invite && S.invite.length >= 4);
+  $('btnStart').disabled = !(all && R.ready && lmOk && inviteOk);
+}
+function init() {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  S.code = Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
+  buildEyes(); setFace('neutral', 0, 0); idleLoop();
+  document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => { S.lang = b.dataset.lang; S.voiceTouched = false; applyLang(); }));
+  if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = refreshVoice;
+  $('btnToSetup').onclick = () => show('s-setup');
+  document.querySelectorAll('.chk').forEach(c => c.addEventListener('change', updateStart));
+  $('consentChk').addEventListener('change', updateStart);
+  $('voiceChk').addEventListener('change', () => { S.voiceTouched = true; });
+  $('btnStart').onclick = () => {
+    S.name = $('robotName').value.trim() || 'Buddy';
+    S.voiceOn = $('voiceChk').checked && S.voiceOk;
+    ac(); mainFlow();
+  };
+  $('btnAsk').addEventListener('click', e => { e.currentTarget.blur(); askRobot(); });
+  $('btnSkip').addEventListener('click', e => { e.currentTarget.blur(); skipCard(); });
+  $('pzCheck').onclick = checkPuzzle;
+  $('pzSkip').onclick = () => { logEv('puzzle_skip', S.pz ? S.pz.type : ''); newPuzzle(); };
+  $('pzIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); checkPuzzle(); } });
+  $('btnAbort').onclick = () => { $('confirm').hidden = false; $('abortNo').focus(); };
+  $('abortNo').onclick = () => { $('confirm').hidden = true; };
+  $('abortYes').onclick = abortSession;
+  document.addEventListener('keydown', e => {
+    if (S.screen !== 's-block' || !$('confirm').hidden) return;
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+    if (e.code === 'Space') { if (tag === 'button' && e.target.id !== 'btnAsk' && e.target.id !== 'btnSkip') return; e.preventDefault(); askRobot(); }
+    else if (e.key === 's' || e.key === 'S') { skipCard(); }
+  });
+  $('enjoyBtns').onclick = e => {
+    const x = e.target.closest('button'); if (!x) return;
+    S.enjoy = x.dataset.v;
+    $('enjoyBtns').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === x)));
+    logEv('enjoyment', S.enjoy);
+    if (R.upload.state !== 'running' && R.upload.state !== 'done') { $('btnSend').disabled = false; if (!$('upMsg').className.includes('ok')) $('upMsg').textContent = ''; }
+  };
+  $('btnCopy').onclick = async () => {
+    const txt = csvText(), msg = $('copyMsg');
+    try { await navigator.clipboard.writeText(txt); msg.textContent = t('copied'); return; } catch (e) {}
+    try { $('logOut').select(); if (document.execCommand('copy')) { msg.textContent = t('copied'); return; } } catch (e) {}
+    msg.textContent = t('copyFail');
+  };
+  $('btnDl').onclick = () => {
+    try {
+      const u = URL.createObjectURL(new Blob([csvText()], { type: 'text/csv' }));
+      const a = document.createElement('a'); a.href = u; a.download = 'sesi-' + S.code + '.csv';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 2000);
+    } catch (e) {}
+    $('copyMsg').textContent = t('copyFail');
+  };
+  S.invite = '';
+  $('inviteWrap').hidden = DEMO;
+  $('camBtn').onclick = enableCamera;
+  $('inviteIn').addEventListener('input', () => { S.invite = $('inviteIn').value.trim(); updateStart(); });
+  $('btnSend').onclick = sendAll;
+  $('btnRetry').onclick = sendAll;
+  $('btnRecover').onclick = recoverSend;
+  window.addEventListener('beforeunload', e => { if (R.upload.state === 'running' || R.recording) { e.preventDefault(); e.returnValue = ''; } });
+  document.addEventListener('visibilitychange', () => { if (R.recording) logEv(document.hidden ? 'tab_hidden' : 'tab_visible'); });
+  applyLang();
+  show('s-intro');
+  recoverCheck();
+}
+init();
+})();
+</script>
+</body>
+</html>
