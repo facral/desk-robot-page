@@ -35,7 +35,7 @@ Limits to know: one chunk POST carries about 4 MB of base64 JSON, under Apps Scr
 |---|---|---|
 | Relay init/chunk/status with a real 100+ MB file, no camera | **[you]** runs, script ready | `scripts/test_upload.py`, commands in 4a |
 | Real camera + MediaPipe model download | **[you]** | Open the hosted page with `#fast`, run one session, check `_features.csv` has `face=1` rows |
-| Yaw/pitch sign convention | **[you]** then **[claude]** | Turn head left, right, up, down in a `#fast` session; Claude writes `scripts/check_signs.py` that plots yaw/pitch over time from the CSV so you can read the sign |
+| Yaw/pitch sign convention | **[you]** runs, script ready | `scripts/check_signs.py`, steps in 4b |
 | Safari / iPhone, Firefox, Android Chrome | **[you]** | One `#fast` session each; note mime (`.mp4` on Safari) and whether upload completes |
 | Retry path on the real relay | **[you]** runs, script ready | `--fail-at` and `--lose-reply-at` in 4a |
 
@@ -57,6 +57,23 @@ Run them in that order; that is 4 uploads, so 4 of the 12 uses. Each run ends wi
 What to expect on the real relay: a few seconds per chunk, so 120 MB (40 chunks) takes minutes, not seconds. If `--negative` reports "reply is not JSON", the web app is not deployed with access = Anyone or the URL is not the `/exec` one.
 
 To rehearse offline: `python scripts/mock_relay.py --invites TEST01`, then use endpoint `http://127.0.0.1:8787/exec` and invite `TEST01`.
+
+### 4b. Camera, MediaPipe and sign check (needs no Apps Script and no GitHub)
+This can be done today on your own laptop, in demo mode.
+1. Serve the page locally (camera access works on localhost):
+   ```
+   python -m http.server 8000
+   ```
+2. Open `http://localhost:8000/index.html#fast` in Chrome, allow the camera, wait for the face check to pass, start the session.
+3. As soon as recording starts: look straight and hold still 3 s, then turn to **your own left** (hold 2 s, back to centre), **your own right**, tilt **up**, tilt **down**. Keep that order. Ignore the mirrored preview.
+4. At the end, demo mode offers the files for download. Save `<code>_features.csv`.
+5. Run:
+   ```
+   python scripts/check_signs.py path\to\<code>_features.csv --plot signs.png
+   ```
+   It prints the face-present ratio, the detected movements, and one line such as `yaw > 0 = head turned to the participant's right; pitch > 0 = head tilted up`. Copy that line into README.md (it replaces "sign convention unverified").
+
+`check_signs.py` was verified on 2026-11-16 with synthetic CSVs only (correct order, flipped signs, wrong order, too few movements). It has not seen a real recording yet. It reads the numeric CSV only, never video.
 
 ## 5. Ethics and consent **[you]**
 Settle outside this repo: ITMO ethics approval, whether face video on Google Drive is allowed for your participants, deletion date. Then put the consent text at `CONSENT_URL` and set `SEND_TO` if participants may send files manually.
