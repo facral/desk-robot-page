@@ -1,13 +1,16 @@
 /**
- * Upload relay for the desk-robot session page.
+ * Upload relay for the desk-robot session page. It only accepts the two CSV files of a session
+ * (events with speech text, and face features); the page sends no video or audio.
+ * Create it from a Google Sheet (Extensions > Apps Script), not at script.google.com: the sheet
+ * "uploads" is the only link between an invite code and a session, and init refuses without it.
  * Deploy as a web app: Execute as = Me, Who has access = Anyone.
  *
  * Script properties to set (Project Settings > Script properties):
  *   FOLDER_ID  id of the private Drive folder that receives the files
  *   INVITES    comma-separated invite codes, for example: AB12CD,EF34GH
- *   MAX_BYTES  optional size limit per file, default 400000000
+ *   MAX_BYTES  optional size limit per file, default 20000000
  *   MAX_USES   optional uploads allowed per invite code, default 12
- *              (one session uploads 3 files, so 12 allows a few retries)
+ *              (one session uploads 2 files, so 12 allows retries and a second device)
  *
  * The browser sends text/plain POSTs with a JSON body:
  *   {action:'init',  invite, name, mime, size}                  -> {ok, sid}
@@ -18,7 +21,7 @@
  * Keep the mapping invite -> file names (sheet "uploads") private: it is the only link between a person and a recording.
  */
 
-var ALLOWED_MIME = ['video/webm', 'video/mp4', 'text/csv'];
+var ALLOWED_MIME = ['text/csv'];
 var NAME_RE = /^[A-Za-z0-9_.-]{1,80}$/;
 
 function doPost(e) {
@@ -51,8 +54,9 @@ function init_(b) {
   if (!NAME_RE.test(String(b.name || ''))) return { ok: false, error: 'name' };
   if (ALLOWED_MIME.indexOf(b.mime) < 0) return { ok: false, error: 'mime' };
   var size = Number(b.size);
-  var max = Number(p.getProperty('MAX_BYTES') || 400000000);
+  var max = Number(p.getProperty('MAX_BYTES') || 20000000);
   if (!(size > 0) || size > max) return { ok: false, error: 'size' };
+  if (!SpreadsheetApp.getActive()) return { ok: false, error: 'sheet' };   // no sheet = no code-to-session record
 
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);

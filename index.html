@@ -72,11 +72,9 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent);margin-ri
 .field input[type=text]{width:100%;margin-top:8px}
 .code{font-size:30px;letter-spacing:.12em;margin:4px 0}
 .dot{font-family:var(--font-dot);font-variant-numeric:tabular-nums}
-.steps li{margin:.5em 0}
 .scale{display:flex;gap:8px;margin:10px 0 4px}
 .scale button{flex:1;font:600 17px var(--font-b);padding:12px 0;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
 .scalelabels{display:flex;justify-content:space-between;color:var(--muted);font-size:13.5px;gap:12px}
-textarea{width:100%;font:13px/1.45 ui-monospace,monospace;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);margin:6px 0 10px}
 .big{font:700 clamp(26px,5vw,38px)/1.2 var(--font-d);text-align:center;margin:18px 0 8px;text-wrap:balance}
 
 /* stage: HUD + robot */
@@ -108,7 +106,17 @@ svg[data-ring="think"] .ring{stroke:var(--ring-think);stroke-dasharray:30 70;ani
 .ok{color:var(--accent);font-weight:600}
 .overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.5);padding:16px;z-index:10}
 .overlay .card{max-width:380px}
-#camPreview{display:block;width:100%;max-width:360px;margin:12px 0;border-radius:12px;background:#000;transform:scaleX(-1)}
+#pv{position:relative;max-width:360px;margin:12px 0}
+#camPreview{display:block;width:100%;border-radius:12px;background:#000;transform:scaleX(-1)}
+#pv::after{content:'';position:absolute;left:32%;right:32%;top:10%;bottom:16%;border:3px dashed var(--warn);border-radius:50%;pointer-events:none}
+#pv.good::after{border-style:solid;border-color:var(--accent)}
+.guide{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.guide svg{display:block;width:100%;height:auto}
+.guide figure{margin:0}
+#review{max-height:220px;overflow:auto}
+.ex{margin:.2em 0 .8em;padding-left:1.1em}
+.ex li{font-weight:600;margin:.3em 0}
+@media (max-width:600px){.robot{width:200px}#pv::after{left:22%;right:22%}}
 .checks.small li{margin:.3em 0}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -120,6 +128,7 @@ svg[data-ring="think"] .ring{stroke:var(--ring-think);stroke-dasharray:30 70;ani
     <div class="lang" role="group" aria-label="Language">
       <button type="button" data-lang="id" aria-pressed="true">ID</button>
       <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      <button type="button" data-lang="ru" aria-pressed="false">RU</button>
     </div>
   </header>
 
@@ -143,18 +152,23 @@ svg[data-ring="think"] .ring{stroke:var(--ring-think);stroke-dasharray:30 70;ani
         </svg>
       </div>
       <p id="caption" class="caption idle" aria-live="polite"></p>
+      <p id="heard" class="small muted" style="text-align:center;min-height:1.4em;margin:0" aria-live="polite"></p>
+      <p id="fbHint" class="small" style="text-align:center;margin:4px 0 0" hidden data-i="fbHint"></p>
     </div>
 
     <section id="s-intro" class="screen">
-      <div id="recoverBar" class="banner" hidden><span data-i="recoverText"></span> <button type="button" class="btn" id="btnRecover" data-i="btnRecover"></button></div>
+      <div id="recoverBar" class="banner" hidden><span data-i="recoverText"></span> <button type="button" class="btn" id="btnRecover" data-i="btnRecover"></button> <button type="button" class="btn ghost" id="btnForget" data-i="btnForget"></button></div>
       <h1 data-i="introTitle"></h1>
       <p class="lead" data-i="introLead"></p>
       <div class="grid3">
-        <div class="card"><h3 data-i="introDoTitle"></h3>
-          <ul><li data-i="introDo1"></li><li data-i="introDo2"></li><li data-i="introDo3"></li></ul></div>
-        <div class="card"><h3 data-i="introRecTitle"></h3><p data-i="introRec"></p></div>
-        <div class="card"><h3 data-i="introRobotTitle"></h3><p data-i="introRobot"></p></div>
-        <div class="card"><h3 data-i="introVolTitle"></h3><p data-i="introVol"></p></div>
+        <div class="card"><h3 data-i="sentTitle"></h3>
+          <ul><li data-i="sent1"></li><li data-i="sent2"></li><li data-i="sent3"></li></ul><p><strong data-i="sentNot"></strong></p></div>
+        <div class="card"><h3 data-i="privTitle"></h3>
+          <ul><li data-i="priv1"></li><li data-i="priv2"></li><li data-i="priv3"></li></ul></div>
+        <div class="card"><h3 data-i="doTitle"></h3>
+          <ul><li data-i="do1"></li><li data-i="do2"></li><li data-i="do3"></li></ul>
+          <h3 data-i="dontTitle"></h3>
+          <ul><li data-i="dont1"></li><li data-i="dont2"></li><li data-i="dont3"></li></ul></div>
       </div>
       <p id="contactLine" class="muted small" hidden></p>
       <p><button type="button" class="btn primary" id="btnToSetup" data-i="btnToSetup"></button></p>
@@ -162,13 +176,18 @@ svg[data-ring="think"] .ring{stroke:var(--ring-think);stroke-dasharray:30 70;ani
 
     <section id="s-setup" class="screen" hidden>
       <h2 data-i="setupTitle"></h2>
+      <div class="card" style="margin-bottom:14px">
+        <h3 data-i="guideTitle"></h3>
+        <div class="guide">
+          <figure><div id="guideGood" class="ok"></div><figcaption class="small">✓ <span data-i="guideGood"></span></figcaption></figure>
+          <figure><div id="guideBad" class="muted"></div><figcaption class="small">✕ <span data-i="guideBad"></span></figcaption></figure>
+        </div>
+      </div>
       <div class="card">
         <ul class="checks">
-          <li><label><input type="checkbox" class="chk"><span data-i="chk1"></span></label></li>
+          <li><label><input type="checkbox" class="chk"><span id="chkDevice"></span></label></li>
           <li><label><input type="checkbox" class="chk"><span data-i="chk2"></span></label></li>
           <li><label><input type="checkbox" class="chk"><span data-i="chk3"></span></label></li>
-          <li><label><input type="checkbox" class="chk"><span data-i="chk4"></span></label></li>
-          <li><label><input type="checkbox" class="chk"><span data-i="chk5"></span></label></li>
         </ul>
       </div>
       <div class="grid3">
@@ -197,19 +216,19 @@ svg[data-ring="think"] .ring{stroke:var(--ring-think);stroke-dasharray:30 70;ani
         <p class="small muted" data-i="camHelp"></p>
         <button type="button" class="btn" id="camBtn" data-i="camBtn"></button>
         <div id="camBox" hidden>
-          <video id="camPreview" playsinline muted></video>
-          <ul class="checks small"><li id="chkCam"></li><li id="chkLight"></li><li id="chkFace"></li></ul>
+          <div id="pv"><video id="camPreview" playsinline muted></video></div>
+          <ul class="checks small" aria-live="polite"><li id="chkCam"></li><li id="chkLight"></li><li id="chkFace"></li><li id="chkMode"></li><li id="chkStt"></li></ul>
         </div>
         <p id="camMsg" class="small" aria-live="polite"></p>
       </div>
       <label class="consent"><input type="checkbox" id="consentChk"><span data-i="consentLabel"></span>
         <a id="consentLink" href="#" target="_blank" rel="noopener" hidden data-i="consentLink"></a></label>
       <p><button type="button" class="btn primary" id="btnStart" disabled data-i="btnStart"></button></p>
-      <p class="muted small" data-i="startHint"></p>
     </section>
 
     <section id="s-calib" class="screen" hidden>
       <p id="calibText" class="big" aria-live="assertive"></p>
+      <p id="calibHint" class="muted" style="text-align:center;min-height:1.5em" aria-live="polite"></p>
       <p class="muted" style="text-align:center" data-i="calibTip"></p>
     </section>
 
@@ -217,6 +236,8 @@ svg[data-ring="think"] .ring{stroke:var(--ring-think);stroke-dasharray:30 70;ani
       <p class="kicker" id="biKicker"></p>
       <h2 id="biTitle"></h2>
       <p class="lead" id="biText"></p>
+      <p class="small muted" data-i="exTitle"></p>
+      <ul id="biEx" class="ex"></ul>
       <p><button type="button" class="btn primary" id="btnBlockStart" data-i="btnBlockStart"></button></p>
     </section>
 
@@ -224,27 +245,21 @@ svg[data-ring="think"] .ring{stroke:var(--ring-think);stroke-dasharray:30 70;ani
       <div id="breakBanner" class="banner" role="status" hidden></div>
       <div class="stack two">
         <div class="card">
-          <div class="kicker" data-i="cardLabel"></div>
-          <p class="say"><span id="wake" class="muted"></span> <strong id="say"></strong></p>
-          <p class="small muted" data-i="spokeHint"></p>
-          <div class="row">
-            <button type="button" id="btnAsk" class="btn primary" data-i="btnAsk"></button>
-            <button type="button" id="btnSkip" class="btn" data-i="btnSkip"></button>
-          </div>
-          <p id="nudge" class="small muted" style="margin:10px 0 0" hidden data-i="nudge"></p>
+          <p class="say"><strong id="askTitle"></strong></p>
+          <ul id="examples" class="ex"></ul>
+          <p class="small muted" id="topics" style="margin:0"></p>
         </div>
-        <div id="pzWrap" class="card">
-          <div class="kicker" id="pzKicker"></div>
-          <div id="pzQ" class="pzq dot"></div>
-          <div class="row">
-            <input type="text" id="pzIn" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Answer">
-            <button type="button" id="pzCheck" class="btn" data-i="btnCheck"></button>
-            <button type="button" id="pzSkip" class="btn ghost" data-i="btnPzSkip"></button>
+        <div id="caseWrap" class="card">
+          <div class="kicker" id="caseKicker"></div>
+          <p id="caseStory"></p>
+          <div id="caseAccuse">
+            <p class="small muted" data-i="caseAccuse"></p>
+            <div class="row" id="suspects"></div>
           </div>
-          <p id="pzMsg" class="small" style="margin:10px 0 0" aria-live="polite"></p>
+          <p id="caseMsg" class="small ok" style="margin:10px 0 0" aria-live="polite"></p>
         </div>
         <div id="freeWrap" class="card" hidden>
-          <h3 data-i="freeTitle"></h3><p style="margin:0" data-i="freeText"></p>
+          <h3 id="freeH"></h3><p style="margin:0" id="freeP"></p>
         </div>
       </div>
     </section>
@@ -288,7 +303,20 @@ svg[data-ring="think"] .ring{stroke:var(--ring-think);stroke-dasharray:30 70;ani
           </div>
           <div class="scalelabels"><span data-i="enjoyLo"></span><span data-i="enjoyHi"></span></div>
         </div>
-          <div class="card" id="upCard">
+        <div class="card" id="traitCard">
+          <p data-i="traitIntro"></p>
+          <div data-q="ext1"><p class="small" style="margin:12px 0 0" data-i="trait1"></p><div class="scale" role="group" aria-label="1-5"><button type="button" data-v="1" aria-pressed="false">1</button><button type="button" data-v="2" aria-pressed="false">2</button><button type="button" data-v="3" aria-pressed="false">3</button><button type="button" data-v="4" aria-pressed="false">4</button><button type="button" data-v="5" aria-pressed="false">5</button></div></div>
+          <div data-q="ext2r"><p class="small" style="margin:12px 0 0" data-i="trait2"></p><div class="scale" role="group" aria-label="1-5"><button type="button" data-v="1" aria-pressed="false">1</button><button type="button" data-v="2" aria-pressed="false">2</button><button type="button" data-v="3" aria-pressed="false">3</button><button type="button" data-v="4" aria-pressed="false">4</button><button type="button" data-v="5" aria-pressed="false">5</button></div></div>
+          <div data-q="va"><p class="small" style="margin:12px 0 0" data-i="trait3"></p><div class="scale" role="group" aria-label="1-5"><button type="button" data-v="1" aria-pressed="false">1</button><button type="button" data-v="2" aria-pressed="false">2</button><button type="button" data-v="3" aria-pressed="false">3</button><button type="button" data-v="4" aria-pressed="false">4</button><button type="button" data-v="5" aria-pressed="false">5</button></div></div>
+          <div class="scalelabels"><span data-i="traitLo"></span><span data-i="traitHi"></span></div>
+        </div>
+        <div class="card">
+          <h3 data-i="reviewTitle"></h3>
+          <p class="small muted" data-i="reviewHelp"></p>
+          <ul id="review" class="small"></ul>
+          <button type="button" class="btn ghost" id="btnDelAll" data-i="btnDelAll"></button>
+        </div>
+        <div class="card" id="upCard">
           <h3 data-i="uploadTitle"></h3>
           <p id="upInfo" class="small muted"></p>
           <div class="bar"><i id="upBar"></i></div>
@@ -298,17 +326,7 @@ svg[data-ring="think"] .ring{stroke:var(--ring-think);stroke-dasharray:30 70;ani
             <button type="button" id="btnRetry" class="btn" hidden data-i="btnRetry"></button>
           </div>
           <div id="dlRow" class="row" style="margin-top:10px" hidden></div>
-        </div>
-        <p class="muted" style="margin:0" data-i="endFun"></p>
-        <div class="card">
-          <h3 data-i="logTitle"></h3>
-          <p class="small muted" data-i="logHelp"></p>
-          <textarea id="logOut" readonly rows="6" aria-label="Session log"></textarea>
-          <div class="row">
-            <button type="button" id="btnCopy" class="btn" data-i="btnCopy"></button>
-            <button type="button" id="btnDl" class="btn ghost" data-i="btnDl"></button>
-          </div>
-          <p id="copyMsg" class="small" style="margin:10px 0 0" aria-live="polite"></p>
+          <p style="margin:10px 0 0"><button type="button" id="btnDiscard" class="link" data-i="btnDiscard"></button></p>
         </div>
       </div>
     </section>
@@ -338,338 +356,409 @@ const CONFIG = {
   CONSENT_URL: '',     // link to your consent form (optional)
   RESEARCHER: '',      // researcher name (optional)
   CONTACT: '',         // contact shown on the first screen (optional)
-  SEND_TO: '',         // where participants send the video (optional)
   BLOCK_SECONDS: { A: 180, B: 180, C: 180 },
-  CALIB_SECONDS: 5,
+  CALIB_SECONDS: 5,                        // seconds each calibration pose must be HELD
+  CALIB_FRONT_DEG: { yaw: 12, pitch: 15 }, // look phase: head within this many degrees of the camera axis
+  CALIB_AWAY_DEG: { yaw: 15, pitch: 12 },  // away phase: at least this far from the look pose
+  CALIB_RELAX_MS: 6000,                    // pose not reached for this long: loosen the test
+  CALIB_MAX_WAIT_MS: 20000,                // still not reached: plain timer so nobody gets stuck
+  WARMUP: true,
+  WARMUP_MAX_MS: 60000,
+  HIDE_CLOCK: true,        // the exact time left is something to ask the robot
+  END_PAUSE_MS: 1300,      // silence after the last words before a sentence counts as finished
+  CORRECT_MS: 8000,        // after an answer, "wrong, it should be ..." is taken as a correction for this long
+  POS_WARN_MS: 3000,       // the robot warns when the face is lost, too far, too close or at the edge this long
+  POS_COOLDOWN_MS: 20000,  // and then waits at least this long before warning again
+  GOAL_CHECKIN: true,      // the robot asks for a goal at the start of each block and checks back near the end
+  ROBOT_OFFERS: true,      // the robot offers to listen if it was never addressed in a block
+  ASK_WINDOW_MS: 25000,    // how long a robot question stays open
+  LISTEN_MAX_MS: 60000,
+  LISTEN_SILENCE_MS: 6000,
+  BACKCHANNEL_MIN_MS: 1200,
+  PRACTICE_MS: 20000,
+  GAZE_FOLLOW: true,
   BREAK_SECONDS: 15,
   BLOCK_RATINGS: true,
   ENDPOINT: '',            // Apps Script web app URL. Empty = demo mode (files offered for download, nothing is sent)
-  MODE: 'video',           // 'video' = record and upload video; 'features' = upload head-pose numbers only (no video, no audio)
-  VIDEO_BPS: 1500000,
   CHUNK: 3 * 1024 * 1024   // upload chunk size in bytes; must be a multiple of 262144
 };
+const QS = new URLSearchParams(location.search);
 const FAST = /fast/.test((location.search + ' ' + location.hash).toLowerCase());
 if (FAST) {
-  for (const k in CONFIG.BLOCK_SECONDS) CONFIG.BLOCK_SECONDS[k] = 12;
+  for (const k in CONFIG.BLOCK_SECONDS) CONFIG.BLOCK_SECONDS[k] = 40;
+  CONFIG.PRACTICE_MS = 8000; CONFIG.ASK_WINDOW_MS = 12000;
   CONFIG.CALIB_SECONDS = 2; CONFIG.BREAK_SECONDS = 3;
 }
-
-const MODE = (new URLSearchParams(location.search).get('mode') === 'features') ? 'features' : CONFIG.MODE;
-const WANT_VIDEO = MODE !== 'features';
+// Phone and laptop sessions are kept apart in file names and headers. ?device=phone|laptop overrides.
+const DEVICE = ['phone', 'laptop'].includes(QS.get('device')) ? QS.get('device')
+  : (matchMedia('(pointer:coarse)').matches && Math.min(screen.width, screen.height) < 600 ? 'phone' : 'laptop');
 const DEMO = !CONFIG.ENDPOINT;
+const BACKUP_KEY = 'deskrobot-backup';
+const LI = { id: 0, en: 1, ru: 2 };
 
-/* ---------- Text ---------- */
-const T = {
-  id: {
-    brand:'Sesi Robot Meja',
-    introTitle:'Temani robot meja kecil selama sekitar 11 menit',
-    introLead:'Kamu akan mengerjakan teka-teki ringan sambil sesekali bicara ke robot meja tiruan. Penelitian ini mempelajari bagaimana orang berinteraksi dengan robot di meja kerja.',
-    introDoTitle:'Yang akan kamu lakukan',
-    introDo1:'Bagian 1: teka-teki kata, sambil bicara ke robot kapan pun kamu mau.',
-    introDo2:'Bagian 2: teka-teki angka dengan beberapa jeda santai.',
-    introDo3:'Bagian 3: bebas, lakukan apa saja yang kamu suka.',
-    introRecTitle:'Yang direkam',
-    introRec:'Kamera depan ponselmu merekam wajah, bahu, dan suaramu selama sesi, memakai aplikasi kamera bawaan. Halaman ini sendiri tidak merekam, tidak mengirim, dan tidak menyimpan apa pun.',
-    introRobotTitle:'Soal robotnya',
-    introRobot:'Robot ini tiruan. Ia tidak melihat atau mendengarmu, dan balasannya sudah disiapkan. Itu memang disengaja.',
-    introVolTitle:'Sukarela',
-    introVol:'Kamu boleh berhenti kapan saja dan boleh meminta rekamanmu dihapus. Tidak ada jawaban benar atau salah.',
-    contact:'Peneliti: {who}. Kontak: {c}.',
-    btnToSetup:'Lanjut ke persiapan',
-    setupTitle:'Persiapan (sekitar 2 menit)',
-    chk1:'Ponselku bersandar diam di dudukan, kamera depan menghadap aku, tepat di samping atau di atas layar laptop.',
-    chk2:'Wajah dan bahuku terlihat penuh di layar ponsel, jarak sekitar 50 sampai 80 cm.',
-    chk3:'Cahaya datang dari depan atau samping, bukan dari belakangku.',
-    chk4:'Ruangan cukup tenang dan suara laptop menyala.',
-    chk5:'Aplikasi kamera ponsel sedang merekam video dengan kamera depan.',
-    nameLabel:'Beri nama robotmu',
-    voiceLabel:'Suara robot (opsional)',
-    voiceNA:'Suara tidak tersedia di perangkat ini. Balasan tampil sebagai teks.',
-    codeLabel:'Kode sesimu',
-    codeHelp:'Tulis kode ini di nama file videomu.',
-    consentLabel:'Aku sudah membaca informasi tadi dan setuju ikut.',
-    consentLink:'Formulir persetujuan',
-    btnStart:'Mulai sesi',
-    startHint:'Pastikan ponsel sudah merekam, lalu tekan Mulai. Akan ada bunyi bip sebentar; tetap diam.',
-    beepNote:'Bip sinkronisasi. Tetap diam sebentar.',
-    calibHud:'Kalibrasi',
-    calibLook:'Tatap robot',
-    calibAway:'Sekarang lihat ke arah lain',
-    calibTip:'Duduk senyaman biasanya dan tetap di dalam bingkai ponsel.',
-    blockA:'Bagian 1 dari 3',
-    blockB:'Bagian 2 dari 3',
-    blockC:'Bagian 3 dari 3',
-    titleA:'Teka-teki kata',
-    titleB:'Teka-teki angka dan jeda',
-    titleC:'Waktu bebas',
-    textA:'Susun huruf acak menjadi kata. Kapan pun kamu mau, bicara ke robot sesuai kartu: ucapkan kalimat di kartu dengan suara jelas, lalu tekan Spasi supaya robot menjawab. Tidak ada target dan tidak ada skor.',
-    textB:'Lengkapi deret angka. Sesekali muncul pesan jeda, seperti minum atau melihat ponsel lain. Lakukan secara santai, itu bukan untuk robot. Kamu tetap boleh bicara ke robot kapan pun.',
-    textC:'Lakukan apa pun yang kamu suka: membaca, bekerja, atau main ponsel. Tanya robot kapan pun kamu mau. Kartu hanya saran.',
-    btnBlockStart:'Mulai bagian ini',
-    cardLabel:'Kartu',
-    wake:'Hai, {n},',
-    spokeHint:'Bicara dulu, lalu tekan Spasi.',
-    btnAsk:'Robot, jawab (Spasi)',
-    btnSkip:'Ganti kartu (S)',
-    nudge:'Siap bertanya kapan pun kamu mau. Tidak ada target.',
-    pzWord:'Susun jadi kata',
-    pzSeq:'Lengkapi deretnya',
-    btnCheck:'Periksa',
-    btnPzSkip:'Lewati',
-    pzOk:'Benar!',
-    pzNo:'Belum pas, coba lagi.',
-    freeTitle:'Waktu bebas',
-    freeText:'Tidak ada tugas. Lakukan apa saja, dan ajak robot bicara jika kamu mau.',
-    br1:'Jeda: minum seteguk air.',
-    br2:'Jeda: lihat ke ponsel lain atau ke luar jendela sebentar.',
-    br3:'Jeda: ucapkan sesuatu pada dirimu sendiri atau pada orang di ruangan, bukan pada robot.',
-    stIdle:'Menunggu', stListen:'Mendengarkan', stThink:'Berpikir',
-    rateTitle:'Satu pertanyaan cepat',
-    q1:'Bagaimana perasaanmu selama bagian tadi?',
-    q1lo:'Sangat tenang', q1hi:'Sangat bersemangat atau tegang',
-    q2:'Seandainya robot menyapa sekarang, apakah itu mengganggu?',
-    q2no:'Tidak mengganggu', q2yes:'Mengganggu',
-    btnNext:'Lanjut', btnFinish:'Selesai',
-    endTitle:'Selesai, terima kasih!',
-    endS1:'Hentikan perekaman di ponselmu.',
-    endS2:'Tulis kode sesimu di nama file atau pesanmu: {code}',
-    endS3:'Kirim videonya ke: {where}',
-    researcher:'peneliti',
-    enjoy:'Seberapa menyenangkan sesi tadi?',
-    enjoyLo:'Kurang', enjoyHi:'Seru banget',
-    endFun:'Satu hal kecil: robot tadi tidak melihatmu. Ia berkedip sendiri, dan semua balasannya sudah disiapkan.',
-    logTitle:'Catatan sesi (opsional)',
-    logHelp:'Berisi waktu tiap bagian dan kartu, tanpa video atau suara. Boleh kamu kirim bersama videonya.',
-    btnCopy:'Salin catatan', btnDl:'Unduh .csv',
-    copied:'Tersalin.',
-    copyFail:'Tidak bisa menyalin otomatis. Pilih teks di atas lalu salin manual.',
-    btnAbort:'Akhiri sesi',
-    abortQ:'Akhiri sesi sekarang?', abortYes:'Ya, akhiri', abortNo:'Lanjutkan'
-  },
-  en: {
-    brand:'Desk Robot Session',
-    introTitle:'Keep a small desk robot company for about 11 minutes',
-    introLead:'You will work on light puzzles and, now and then, talk to a pretend desk robot. This study looks at how people interact with a robot on a work desk.',
-    introDoTitle:'What you will do',
-    introDo1:'Part 1: word puzzles, talking to the robot whenever you like.',
-    introDo2:'Part 2: number puzzles with a few relaxed breaks.',
-    introDo3:'Part 3: free time, do whatever you like.',
-    introRecTitle:'What is recorded',
-    introRec:'Your phone\'s front camera records your face, shoulders and voice during the session, using the built-in camera app. This page itself does not record, send or store anything.',
-    introRobotTitle:'About the robot',
-    introRobot:'The robot is a stand-in. It cannot see or hear you, and its replies are prepared in advance. That is on purpose.',
-    introVolTitle:'Voluntary',
-    introVol:'You can stop at any time and ask for your recording to be deleted. There are no right or wrong answers.',
-    contact:'Researcher: {who}. Contact: {c}.',
-    btnToSetup:'Continue to setup',
-    setupTitle:'Setup (about 2 minutes)',
-    chk1:'My phone leans still on a stand, front camera facing me, right beside or above the laptop screen.',
-    chk2:'My face and shoulders are fully visible on the phone screen, about 50 to 80 cm away.',
-    chk3:'Light comes from the front or side, not from behind me.',
-    chk4:'The room is fairly quiet and the laptop sound is on.',
-    chk5:'The phone camera app is recording video with the front camera.',
-    nameLabel:'Name your robot',
-    voiceLabel:'Robot voice (optional)',
-    voiceNA:'Voice is not available on this device. Replies appear as text.',
-    codeLabel:'Your session code',
-    codeHelp:'Write this code in your video file name.',
-    consentLabel:'I have read the information above and agree to take part.',
-    consentLink:'Consent form',
-    btnStart:'Start session',
-    startHint:'Make sure the phone is recording, then press Start. A short beep will play; stay still.',
-    beepNote:'Sync beep. Stay still for a moment.',
-    calibHud:'Calibration',
-    calibLook:'Look at the robot',
-    calibAway:'Now look somewhere else',
-    calibTip:'Sit as you normally would and stay inside the phone frame.',
-    blockA:'Part 1 of 3',
-    blockB:'Part 2 of 3',
-    blockC:'Part 3 of 3',
-    titleA:'Word puzzles',
-    titleB:'Number puzzles and breaks',
-    titleC:'Free time',
-    textA:'Unscramble the letters into a word. Whenever you like, talk to the robot using the card: say the sentence on the card out loud, then press Space so the robot replies. There is no target and no score.',
-    textB:'Complete the number sequences. Now and then a break message appears, such as drinking water or checking another phone. Do it casually, it is not for the robot. You can still talk to the robot any time.',
-    textC:'Do whatever you like: read, work, or use your phone. Ask the robot whenever you want. Cards are only suggestions.',
-    btnBlockStart:'Start this part',
-    cardLabel:'Card',
-    wake:'Hey, {n},',
-    spokeHint:'Speak first, then press Space.',
-    btnAsk:'Robot, reply (Space)',
-    btnSkip:'Change card (S)',
-    nudge:'Ready whenever you want to ask. There is no target.',
-    pzWord:'Unscramble the word',
-    pzSeq:'Complete the sequence',
-    btnCheck:'Check',
-    btnPzSkip:'Skip',
-    pzOk:'Correct!',
-    pzNo:'Not quite, try again.',
-    freeTitle:'Free time',
-    freeText:'No task. Do anything you like, and talk to the robot if you want to.',
-    br1:'Break: take a sip of water.',
-    br2:'Break: look at another phone or out of the window for a moment.',
-    br3:'Break: say something to yourself or to someone in the room, not to the robot.',
-    stIdle:'Waiting', stListen:'Listening', stThink:'Thinking',
-    rateTitle:'One quick question',
-    q1:'How did you feel during that part?',
-    q1lo:'Very calm', q1hi:'Very excited or tense',
-    q2:'If the robot greeted you right now, would that bother you?',
-    q2no:'It would not bother me', q2yes:'It would bother me',
-    btnNext:'Continue', btnFinish:'Finish',
-    endTitle:'Done, thank you!',
-    endS1:'Stop the recording on your phone.',
-    endS2:'Write your session code in the file name or message: {code}',
-    endS3:'Send the video to: {where}',
-    researcher:'the researcher',
-    enjoy:'How enjoyable was the session?',
-    enjoyLo:'Not much', enjoyHi:'Really fun',
-    endFun:'One small thing: the robot never saw you. It blinked on its own, and all its replies were prepared in advance.',
-    logTitle:'Session notes (optional)',
-    logHelp:'Contains the timing of each part and card, with no video or audio. You may send it along with the video.',
-    btnCopy:'Copy notes', btnDl:'Download .csv',
-    copied:'Copied.',
-    copyFail:'Could not copy automatically. Select the text above and copy it manually.',
-    btnAbort:'End session',
-    abortQ:'End the session now?', abortYes:'Yes, end it', abortNo:'Keep going'
+/* ---------- Text: one row per string, [Indonesian, English, Russian] ---------- */
+const TX = {
+brand:['Sesi Robot Meja','Desk Robot Session','Сессия с настольным роботом'],
+introTitle:['Temani robot meja kecil sekitar 11 menit','Keep a small desk robot company for about 11 minutes','Составь компанию настольному роботу примерно на 11 минут'],
+introLead:["Kamu akan memecahkan beberapa kasus detektif kecil sambil bicara ke robot. Panggil namanya, lalu tanyakan apa saja dengan kalimatmu sendiri.", "You will solve a few small detective cases by talking to a robot. Call its name, then ask anything in your own words.", "Ты будешь раскрывать маленькие детективные дела, разговаривая с роботом. Назови его по имени и спрашивай своими словами."],
+sentTitle:['Yang dikirim ke peneliti','What is sent to the researchers','Что отправляется исследователям'],
+sent1:['Arah kepala dan mata, bukaan mulut, serta posisi wajah (angka saja)','Head and eye direction, mouth opening and face position (numbers only)','Направление головы и взгляда, открытие рта и положение лица (только числа)'],
+sent2:['Teks ucapan yang terdengar selama sesi. Bisa kamu baca dan hapus sebelum dikirim','Text of the speech heard during the session. You can read and delete it before sending','Текст речи, услышанной во время сессии. Его можно прочитать и удалить перед отправкой'],
+sent3:['Waktu tiap kejadian, penilaianmu, jenis perangkat, dan kode sesi','Event timings, your ratings, device type and session code','Время событий, твои оценки, тип устройства и код сессии'],
+sentNot:['Video, suara, dan foto tidak disimpan dan tidak dikirim oleh halaman ini.','This page does not store or send any video, audio or photos.','Эта страница не сохраняет и не отправляет видео, звук и фото.'],
+privTitle:['Privasi','Privacy','Конфиденциальность'],
+priv1:['Gambar kamera diolah di perangkatmu lalu langsung dibuang.','Camera images are processed on your device and discarded at once.','Изображение с камеры обрабатывается на твоём устройстве и сразу удаляется.'],
+priv2:['Untuk mengubah ucapan jadi teks, browser bisa mengirim suaramu ke pembuat browser, misalnya Google atau Apple. Layar persiapan menunjukkan cara yang dipakai perangkatmu.','To turn speech into text, the browser may send your voice to its maker, for example Google or Apple. The setup screen shows which way your device uses.','Чтобы превратить речь в текст, браузер может отправлять голос своему производителю, например Google или Apple. На экране подготовки указано, какой способ использует твоё устройство.'],
+priv3:['Data diberi kode acak, bukan namamu. Kamu boleh berhenti kapan saja dan meminta datamu dihapus.','Data is labelled with a random code, not your name. You may stop at any time and ask for deletion.','Данные помечаются случайным кодом, а не твоим именем. Можно остановиться в любой момент и попросить удалить данные.'],
+doTitle:['Lakukan','Do','Можно и нужно'],
+do1:['Duduk sendiri di ruangan yang tenang','Sit alone in a quiet room','Сиди в тихой комнате без других людей'],
+do2:['Pastikan cahaya datang dari depan','Keep the light in front of you','Свет должен падать спереди'],
+do3:['Bicara dengan nada dan kata-katamu sendiri','Speak in your normal voice and your own words','Говори обычным голосом и своими словами'],
+dontTitle:['Jangan','Do not','Нельзя'],
+dont1:['Menyebut nama lengkap, alamat, nomor telepon, atau kata sandi','Say full names, addresses, phone numbers or passwords','Называть полные имена, адреса, телефоны и пароли'],
+dont2:['Membicarakan orang lain atau membiarkan suara orang lain terdengar','Talk about other people or let other voices be heard','Говорить о других людях и допускать чужие голоса'],
+dont3:['Memindahkan perangkat setelah sesi dimulai','Move the device after the session starts','Двигать устройство после начала сессии'],
+contact:['Peneliti: {who}. Kontak: {c}.','Researcher: {who}. Contact: {c}.','Исследователь: {who}. Контакт: {c}.'],
+btnToSetup:['Lanjut ke persiapan','Continue to setup','Перейти к подготовке'],
+recoverText:['Ada data sesi sebelumnya yang belum dikirim (angka wajah dan teks ucapan).','Data from an earlier session has not been sent (face numbers and speech text).','Есть неотправленные данные прошлой сессии (числа о лице и текст речи).'],
+btnRecover:['Kirim sekarang','Send now','Отправить'],
+btnForget:['Hapus','Delete','Удалить'],
+setupTitle:['Persiapan','Setup','Подготовка'],
+guideTitle:['Letak perangkat','Where to put your device','Как поставить устройство'],
+guideGood:['Benar: kamera setinggi mata, jarak 50 sampai 80 cm','Right: camera at eye height, 50 to 80 cm away','Правильно: камера на уровне глаз, 50–80 см'],
+guideBad:['Salah: kamera terlalu rendah, menatap dari bawah','Wrong: camera too low, looking up at you','Неправильно: камера слишком низко'],
+chkLaptop:['Laptop di meja, layar tegak, dan tidak akan kugeser','The laptop is on a table, screen upright, and I will not move it','Ноутбук на столе, экран прямо, я не буду его двигать'],
+chkPhone:['HP bersandar diam di dudukan setinggi mata, posisi tegak, tidak dipegang','The phone leans still on a stand at eye height, upright, not hand-held','Телефон неподвижно стоит на подставке на уровне глаз, вертикально, не в руке'],
+chk2:['Wajahku pas di dalam garis pada pratinjau','My face fits the outline in the preview','Лицо помещается в контур на предпросмотре'],
+chk3:['Ruangan tenang dan cahaya dari depan','The room is quiet and the light is in front','В комнате тихо, свет спереди'],
+nameLabel:['Nama robotmu (dipakai untuk memanggil)','Your robot\'s name (you call it with this)','Имя робота (им ты его зовёшь)'],
+voiceLabel:['Suara robot (opsional)','Robot voice (optional)','Голос робота (необязательно)'],
+voiceNA:['Suara tidak tersedia, balasan tampil sebagai teks.','Voice not available. Replies appear as text.','Голос недоступен, ответы будут текстом.'],
+codeLabel:['Kode sesimu','Your session code','Код твоей сессии'],
+codeHelp:['Catat kode ini jika nanti ingin datamu dihapus.','Note it in case you want your data deleted later.','Запиши его, если позже захочешь удалить данные.'],
+inviteLabel:['Kode undangan dari peneliti','Invite code from the researcher','Код приглашения от исследователя'],
+camTitle:['Cek kamera dan mikrofon','Camera and microphone check','Проверка камеры и микрофона'],
+camHelp:['Izinkan kamera dan mikrofon. Lalu sebut nama robotmu sekali.','Allow camera and microphone. Then say your robot\'s name once.','Разреши камеру и микрофон. Затем один раз назови имя робота.'],
+camBtn:['Aktifkan kamera dan mikrofon','Turn on camera and microphone','Включить камеру и микрофон'],
+camOk:['Kamera aktif','Camera on','Камера включена'],
+camDenied:['Kamera tidak bisa dibuka. Izinkan di pengaturan browser, tutup aplikasi lain yang memakai kamera, lalu muat ulang.','The camera could not be opened. Allow it in browser settings, close other apps using it, then reload.','Не удалось открыть камеру. Разреши доступ, закрой другие программы и перезагрузи страницу.'],
+camDark:['Terlalu gelap, tambah cahaya dari depan','Too dark, add light in front','Слишком темно, добавь свет спереди'],
+camLightOk:['Cahaya cukup','Light is fine','Света достаточно'],
+faceOk:['Posisi wajah pas','Face position is good','Положение лица хорошее'],
+faceFar:['Terlalu jauh, mendekatlah','Too far, move closer','Слишком далеко, подвинься ближе'],
+faceNear:['Terlalu dekat, mundurlah','Too close, move back','Слишком близко, отодвинься'],
+faceNone:['Wajah belum terdeteksi','No face detected yet','Лицо пока не найдено'],
+faceLoading:['Memuat pemeriksa wajah...','Loading face check...','Загружается проверка лица...'],
+faceNA:['Pemeriksa wajah gagal dimuat. Periksa internet lalu muat ulang.','The face check failed to load. Check your internet and reload.','Проверка лица не загрузилась. Проверь интернет и перезагрузи.'],
+sttNone:['Browser ini tidak bisa mengubah ucapan jadi teks. Pakai Chrome.','This browser cannot turn speech into text. Use Chrome.','Этот браузер не умеет распознавать речь. Используй Chrome.'],
+sttLocal:['Ucapan diubah jadi teks di perangkatmu.','Speech is turned into text on your device.','Речь распознаётся на твоём устройстве.'],
+sttServer:['Ucapan dikirim ke pembuat browser untuk diubah jadi teks.','Speech is sent to the browser maker to be turned into text.','Речь отправляется производителю браузера для распознавания.'],
+sttWait:['Sebut "{n}" untuk mengetes mikrofon','Say "{n}" to test the microphone','Скажи «{n}», чтобы проверить микрофон'],
+sttHeard:['Terdengar: {x}. Coba sebut "{n}" lagi.','Heard: {x}. Try saying "{n}" again.','Услышано: {x}. Скажи «{n}» ещё раз.'],
+sttName:['Nama robot dikenali','The robot\'s name was recognised','Имя робота распознано'],
+sttFail:['Pengenalan ucapan berhenti ({x}). Cek izin mikrofon dan internet.','Speech recognition stopped ({x}). Check microphone permission and internet.','Распознавание остановилось ({x}). Проверь доступ к микрофону и интернет.'],
+consentLabel:['Aku sudah membaca informasi tadi dan setuju ikut.','I have read the information and agree to take part.','Я прочитал(а) информацию и согласен(на) участвовать.'],
+consentLink:['Formulir persetujuan','Consent form','Форма согласия'],
+btnStart:['Mulai sesi','Start session','Начать сессию'],
+beepNote:['Sesi dimulai. Duduk seperti biasa.','The session has started. Sit as you normally would.','Сессия началась. Сиди как обычно.'],
+calibHud:['Kalibrasi','Calibration','Калибровка'],
+calibLook:['Tatap robot dan tahan','Look at the robot and hold','Смотри на робота и не двигайся'],
+calibAway:['Sekarang palingkan kepala dan tahan','Now turn your head away and hold','Теперь отверни голову и не двигайся'],
+calibLookHint:['Hitungan berjalan saat wajahmu menghadap robot dan diam.','The countdown runs while you face the robot and stay still.','Отсчёт идёт, пока лицо повёрнуто к роботу и неподвижно.'],
+calibAwayHint:['Hitungan berjalan saat kepalamu berpaling.','The countdown runs while your head is turned away.','Отсчёт идёт, пока голова отвёрнута.'],
+calibHold:['Bagus, tahan.','Good, hold it.','Хорошо, держи.'],
+calibTip:['Tetap terlihat di kamera.','Stay visible to the camera.','Оставайся в кадре.'],
+warmHud:['Latihan','Practice','Тренировка'],
+warmTitle:['Latihan dulu, belum dihitung','Practice first, this does not count','Сначала тренировка, она не считается'],
+warmText:["Coba dua kali supaya terbiasa. Ucapkan contoh di kiri, mulai dengan nama \"{n}\".", "Try twice to get used to it. Say the examples on the left, starting with \"{n}\".", "Попробуй два раза, чтобы привыкнуть. Скажи примеры слева, начиная с «{n}»."],
+blockA:['Bagian 1 dari 3','Part 1 of 3','Часть 1 из 3'],
+blockB:['Bagian 2 dari 3','Part 2 of 3','Часть 2 из 3'],
+blockC:['Bagian 3 dari 3','Part 3 of 3','Часть 3 из 3'],
+titleA:['Detektif mini','Mini detective','Мини-детектив'],
+titleB:["Kasus berikutnya dan jeda", "More cases and breaks", "Новые дела и перерывы"],
+titleC:['Waktu bebas','Free time','Свободное время'],
+textA:["Ada beberapa kasus kecil. Hanya {n} yang tahu petunjuknya. Tanyakan dengan kalimatmu sendiri, selalu diawali nama \"{n}\", lalu diam sejenak supaya ia tahu kamu sudah selesai. Kalau sudah yakin, pilih pelakunya. Kasus berikutnya langsung muncul.", "There are several small cases, and only {n} knows the clues. Ask in your own words, always starting with \"{n}\", then pause a moment so it knows you are done. When you are sure, pick the culprit. The next case appears right away.", "Есть несколько маленьких дел, улики знает только {n}. Спрашивай своими словами, всегда начиная с «{n}», и сделай паузу, чтобы робот понял, что ты закончил(а). Когда будешь уверен(а), выбери виновника. Следующее дело появится сразу."],
+textB:["Lanjutkan memecahkan kasus bersama {n}. Sesekali muncul pesan jeda; lakukan santai, itu bukan untuk robot.", "Keep solving cases with {n}. Now and then a break message appears. Do it casually, it is not for the robot.", "Продолжай раскрывать дела вместе с роботом {n}. Иногда появляется перерыв: делай спокойно, это не для робота."],
+textC:['Lakukan apa saja di depan kamera. Sebut "{n}" kapan pun kamu mau.','Do anything you like in front of the camera. Say "{n}" whenever you want.','Занимайся чем угодно перед камерой. Говори «{n}», когда захочешь.'],
+btnBlockStart:['Mulai bagian ini','Start this part','Начать эту часть'],
+askTitle:["Cara bertanya: sebut \"{n}\" dulu, lalu pertanyaanmu. Contoh:", "How to ask: say \"{n}\" first, then your question. For example:", "Как спрашивать: сначала скажи «{n}», потом вопрос. Например:"],
+caseAccuse:['Pelakunya:','The culprit is:','Виновник:'],
+caseWrong:['Belum tepat. Tanyakan lagi ke {n}.','Not quite. Ask {n} some more.','Пока не то. Спроси ещё у робота {n}.'],
+freeTitle:['Waktu bebas','Free time','Свободное время'],
+freeText:['Tidak ada tugas. Ajak {n} bicara jika mau.','No task. Talk to {n} if you want.','Заданий нет. Поговори с роботом {n}, если хочешь.'],
+br1:['Jeda: minum seteguk air.','Break: take a sip of water.','Перерыв: сделай глоток воды.'],
+br2:['Jeda: lihat ke luar jendela sebentar.','Break: look out of the window for a moment.','Перерыв: посмотри ненадолго в окно.'],
+br3:['Jeda: ucapkan sesuatu pada dirimu sendiri, bukan pada robot.','Break: say something to yourself, not to the robot.','Перерыв: скажи что-нибудь себе, а не роботу.'],
+stIdle:['Menunggu','Waiting','Жду'],
+stThink:['Berpikir','Thinking','Думаю'],
+checkinQ:['Apa targetmu untuk bagian ini?','What do you want to get done in this part?','Что ты хочешь успеть в этой части?'],
+checkoutQ:['Waktunya hampir habis. Tercapai targetmu?','Time is almost up. Did you get it done?','Время почти вышло. Получилось задуманное?'],
+checkinR:['Oke, kuingat. Nanti kutanya lagi.','Okay, noted. I will ask again later.','Хорошо, запомнил. Потом спрошу ещё раз.'],
+checkoutR:['Terima kasih sudah cerita.','Thanks for telling me.','Спасибо, что рассказал(а).'],
+offerListen:['Mau cerita apa yang sedang kamu kerjakan? Kalau mau, bilang ya.','Want to tell me what you are working on? If so, say yes.','Хочешь рассказать, над чем работаешь? Если да, скажи «да».'],
+listenIntro:['Aku dengarkan. Bilang "selesai" kalau sudah.','I am listening. Say "done" when you finish.','Слушаю. Когда закончишь, скажи «готово».'],
+listenOn:['Mendengarkan...','Listening...','Слушаю...'],
+listenEnd:['Terima kasih sudah cerita. Apa langkah pertamamu?','Thanks for telling me. What is your first step?','Спасибо, что рассказал(а). Какой будет первый шаг?'],
+practiceIntro:['Latihan bicara {total} detik. Topik: {topic}','{total} seconds of speaking practice. Topic: {topic}','Речевая практика {total} секунд. Тема: {topic}'],
+practiceOn:['Silakan bicara... sisa {s} detik','Go ahead... {s} seconds left','Говори... осталось {s} сек.'],
+practiceDone:['Selesai. Kamu bicara sekitar {s} dari {total} detik.','Done. You spoke for about {s} of {total} seconds.','Готово. Ты говорил(а) примерно {s} из {total} секунд.'],
+rateTitle:['Satu pertanyaan cepat','One quick question','Один быстрый вопрос'],
+q1:['Bagaimana perasaanmu selama bagian tadi?','How did you feel during that part?','Как ты себя чувствовал(а) в этой части?'],
+q1lo:['Sangat tenang','Very calm','Очень спокойно'],
+q1hi:['Sangat bersemangat atau tegang','Very excited or tense','Очень взволнованно'],
+q2:['Seandainya robot menyapa sekarang, apakah itu mengganggu?','If the robot greeted you now, would that bother you?','Если бы робот сейчас поздоровался, это помешало бы?'],
+q2no:['Tidak mengganggu','It would not bother me','Не помешало бы'],
+q2yes:['Mengganggu','It would bother me','Помешало бы'],
+btnNext:['Lanjut','Continue','Дальше'],
+btnFinish:['Selesai','Finish','Завершить'],
+endTitle:['Selesai, terima kasih!','Done, thank you!','Готово, спасибо!'],
+enjoy:['Seberapa menyenangkan sesi tadi?','How enjoyable was the session?','Насколько приятной была сессия?'],
+enjoyLo:['Kurang','Not much','Не очень'],
+enjoyHi:['Seru banget','Really fun','Очень весело'],
+traitIntro:['Tiga pertanyaan singkat (opsional). 1 = sangat tidak setuju, 5 = sangat setuju.','Three short questions (optional). 1 = strongly disagree, 5 = strongly agree.','Три коротких вопроса (необязательно). 1 = совсем не согласен, 5 = полностью согласен.'],
+trait1:['Aku banyak bicara dan mudah bergaul.','I am talkative and outgoing.','Я разговорчивый и общительный человек.'],
+trait2:['Aku cenderung pendiam.','I tend to be quiet.','Я скорее молчаливый человек.'],
+traitLo:['Sangat tidak setuju','Strongly disagree','Совсем не согласен'],
+traitHi:['Sangat setuju','Strongly agree','Полностью согласен'],
+trait3:['Aku nyaman bicara dengan asisten suara.','I am comfortable talking to voice assistants.','Мне комфортно разговаривать с голосовыми помощниками.'],
+reviewTitle:['Teks ucapan yang akan dikirim','Speech text that will be sent','Текст речи, который будет отправлен'],
+reviewHelp:['Hapus baris yang tidak ingin kamu kirim.','Delete any line you do not want to send.','Удали строки, которые не хочешь отправлять.'],
+reviewNone:['Tidak ada teks ucapan.','No speech text.','Текста речи нет.'],
+btnDelAll:['Hapus semua teks','Delete all text','Удалить весь текст'],
+uploadTitle:['Kirim data','Send the data','Отправка данных'],
+upInfo:['Angka wajah dan catatan sesi (kode {code}) dikirim. Tidak ada video atau suara.','Face numbers and session notes (code {code}) are sent. No video or audio.','Отправляются числа о лице и заметки сессии (код {code}). Без видео и звука.'],
+upDemo:['Mode uji: tidak ada tujuan unggah. Simpan berkas di perangkatmu.','Test mode: no upload destination. Save the files on your device.','Тестовый режим: отправлять некуда. Сохрани файлы на устройстве.'],
+upRate:['Beri nilai di atas dulu, lalu tekan Kirim.','Rate the session above first, then press Send.','Сначала поставь оценку, затем нажми «Отправить».'],
+btnSend:['Kirim data','Send data','Отправить данные'],
+btnRetry:['Coba kirim lagi','Try again','Попробовать снова'],
+btnDiscard:['Jangan kirim, hapus semuanya','Do not send, delete everything','Не отправлять, удалить всё'],
+discarded:['Semua data sesi ini sudah dihapus. Kamu boleh menutup halaman.','All data from this session has been deleted. You may close the page.','Все данные сессии удалены. Страницу можно закрыть.'],
+uploading:['Mengirim {n}: {p}%','Sending {n}: {p}%','Отправка {n}: {p}%'],
+upDone:['Terkirim. Terima kasih! Kode sesimu {code}.','Sent. Thank you! Your session code is {code}.','Отправлено. Спасибо! Код сессии: {code}.'],
+upFail:['Pengiriman gagal. Coba lagi, atau simpan berkas di bawah.','Sending failed. Try again, or save the files below.','Не удалось отправить. Попробуй ещё раз или сохрани файлы ниже.'],
+upDemoMsg:['Simpan berkas di bawah.','Save the files below.','Сохрани файлы ниже.'],
+btnDl2:['Simpan {n}','Save {n}','Сохранить {n}'],
+btnAbort:['Akhiri sesi','End session','Завершить сессию'],
+abortQ:['Akhiri sesi sekarang?','End the session now?','Завершить сессию сейчас?'],
+abortYes:['Ya, akhiri','Yes, end it','Да, завершить'],
+abortNo:['Lanjutkan','Keep going','Продолжить'],
+exTitle:["Contoh cara bertanya:", "How to ask, for example:", "Как спрашивать, например:"],
+ex1:["«{n}, {s} ada di mana tadi?»", "\"{n}, where was {s}?\"", "«{n}, где был(а) {s}?»"],
+ex2:["«{n}, ceritakan soal {p}.»", "\"{n}, tell me about {p}.\"", "«{n}, расскажи про {p}.»"],
+ex3:["«{n}, beri aku petunjuk.»", "\"{n}, give me a clue.\"", "«{n}, дай подсказку.»"],
+exW1:["«{n}, halo!»", "\"{n}, hello!\"", "«{n}, привет!»"],
+exW2:["«{n}, jam berapa sekarang?»", "\"{n}, what time is it?\"", "«{n}, который час?»"],
+exC1:["«{n}, dengarkan aku.»", "\"{n}, listen to me.\"", "«{n}, выслушай меня.»"],
+exC2:["«{n}, ayo latihan bicara.»", "\"{n}, let us do speaking practice.\"", "«{n}, давай речевую практику.»"],
+exC3:["«{n}, berapa lama lagi?»", "\"{n}, how long is left?\"", "«{n}, сколько ещё осталось?»"],
+topicLabel:["Kamu bisa bertanya tentang:", "You can ask about:", "Можно спросить про:"],
+caseNo:["Kasus {i} dari {total}", "Case {i} of {total}", "Дело {i} из {total}"],
+caseNext:["Kasus berikutnya!", "Next case!", "Следующее дело!"],
+caseAll:["Semua kasus sudah terpecahkan. Hebat!", "All cases are solved. Well done!", "Все дела раскрыты. Отлично!"],
+caseSkip:["Oke, kita lanjut ke kasus berikutnya.", "Okay, on to the next case.", "Хорошо, переходим к следующему делу."],
+heardLine:["Kudengar: «{x}»", "I heard: \"{x}\"", "Я услышал: «{x}»"],
+freeReply:["Maaf, aku dengar «{x}», tapi belum paham. Coba misalnya: {ex}", "Sorry, I heard \"{x}\" but did not understand. Try for example: {ex}", "Извини, я услышал «{x}», но не понял. Попробуй, например: {ex}"],
+fbHint:["Kalau jawabanku salah, bilang saja: «salah, harusnya …»", "If my answer was wrong, just say: \"wrong, it should be …\"", "Если я ответил не так, скажи: «неправильно, должно быть …»"],
+fbThanks:["Terima kasih, sudah kucatat.", "Thanks, I have noted that.", "Спасибо, я записал."],
+fbSorry:["Oh, maaf. Silakan lanjut.", "Oh, sorry. Carry on.", "Ой, извини. Продолжай."],
+faceEdge:["Wajah terlalu ke pinggir, geser ke tengah", "Face too close to the edge, move to the centre", "Лицо у края кадра, сдвинься к центру"],
+pos_none:["Aku tidak bisa melihat wajahmu. Kembali ke depan kamera, ya.", "I cannot see your face. Please come back in front of the camera.", "Я не вижу твоего лица. Вернись, пожалуйста, к камере."],
+pos_far:["Kamu terlalu jauh. Mendekatlah sedikit ke kamera.", "You are too far away. Please come a little closer.", "Ты слишком далеко. Подвинься чуть ближе к камере."],
+pos_near:["Kamu terlalu dekat. Mundurlah sedikit.", "You are too close. Please move back a little.", "Ты слишком близко. Отодвинься немного."],
+pos_edge:["Wajahmu ada di pinggir kamera. Geser ke tengah, ya.", "Your face is at the edge of the camera. Please move to the centre.", "Твоё лицо у края кадра. Сдвинься к центру."]
+};
+
+/* PURE-START: no DOM in this block, scripts/test_page.mjs runs it */
+const L3 = (id, en, ru) => ({ id, en, ru });
+const SR_LANG = L3('id-ID', 'en-US', 'ru-RU');
+const NAME_DEF = L3('Budi', 'Buddy', 'Бадди');
+const norm = s => String(s).toLowerCase().replace(/ё/g, 'е').replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+// Edit distance, because recognisers mishear a name by a letter or two.
+function dist(a, b) {
+  let row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const next = [i];
+    for (let j = 1; j <= b.length; j++) next[j] = Math.min(next[j - 1] + 1, row[j] + 1, row[j - 1] + (a[i - 1] !== b[j - 1]));
+    row = next;
   }
-};
+  return row[b.length];
+}
+// The text without the name if the robot was called, otherwise null. The first letter must match.
+function afterName(text, name) {
+  const words = norm(text).split(' '), n = norm(name).replace(/ /g, ''), slack = n.length <= 4 ? 1 : 2;
+  const i = words.findIndex(w => w && w[0] === n[0] && dist(w, n) <= slack);
+  return i < 0 ? null : words.filter((_, k) => k !== i).join(' ');
+}
 
-/* v2 text: webcam recording and upload (overrides and additions to the strings above) */
-Object.assign(T.id, {
-  introRec: MODE === 'features'
-    ? 'Halaman ini menghitung arah kepalamu langsung di perangkatmu dan hanya mengirim angka, tanpa video dan tanpa suara.'
-    : 'Halaman ini merekam video wajah dan suaramu lewat kamera dan mikrofon laptop selama sesi, lalu mengirimnya ke penyimpanan peneliti di Google Drive dengan akses terbatas. Detailnya ada di formulir persetujuan.',
-  chk1:'Aku duduk di depan laptop, wajah dan bahuku terlihat penuh di pratinjau, jarak sekitar 50 sampai 80 cm.',
-  chk2:'Laptop berdiri stabil dan layarnya tidak kumiringkan selama sesi.',
-  chk3:'Cahaya datang dari depan atau samping, bukan dari belakangku.',
-  chk4:'Ruangan cukup tenang. Headset boleh dipakai.',
-  chk5:'Aku akan membiarkan halaman ini terbuka sampai muncul tulisan Terkirim.',
-  startHint:'Pastikan pratinjau kamera terlihat baik, lalu tekan Mulai. Rekaman dimulai saat itu juga.',
-  beepNote:'Rekaman dimulai. Duduk seperti biasa.',
-  inviteLabel:'Kode undangan dari peneliti',
-  camTitle:'Cek kamera',
-  camHelp: WANT_VIDEO ? 'Izinkan kamera dan mikrofon saat browser bertanya. Pratinjau hanya untuk memeriksa posisi.' : 'Izinkan kamera saat browser bertanya. Mikrofon tidak dipakai.',
-  camBtn:'Aktifkan kamera', camOk:'Kamera aktif', camNo:'Kamera belum aktif',
-  camDenied:'Izin kamera ditolak. Aktifkan izinnya di pengaturan browser lalu muat ulang halaman.',
-  camDark:'Cahaya terlalu gelap, tambah cahaya dari depan', camLightOk:'Cahaya cukup',
-  faceOk:'Wajah terdeteksi dengan ukuran pas', faceFar:'Wajah terlalu kecil, mendekatlah', faceNear:'Wajah terlalu besar, mundurlah',
-  faceNone:'Wajah belum terdeteksi', faceLoading:'Memuat pemeriksa wajah...',
-  faceNA:'Pemeriksa wajah tidak tersedia, pastikan wajah dan bahumu terlihat penuh',
-  uploadTitle:'Kirim rekaman',
-  upInfoVid:'Video dan catatan sesi (kode {code}) dikirim ke penyimpanan peneliti. Jangan tutup halaman sampai muncul tulisan Terkirim.',
-  upInfoFeat:'Hanya angka pose kepala dan catatan sesi (kode {code}) yang dikirim. Tidak ada video.',
-  upDemo:'Mode uji: tidak ada tujuan unggah. Berkas disimpan di perangkatmu.',
-  upRate:'Beri nilai di atas dulu, lalu tekan Kirim.',
-  btnSend:'Kirim rekaman', btnRetry:'Coba kirim lagi',
-  uploading:'Mengirim {n}: {p}%',
-  upDone:'Terkirim. Terima kasih! Kode sesimu {code}. Kamu boleh menutup halaman.',
-  upFail:'Pengiriman gagal. Coba lagi, atau simpan berkas di bawah dan kirim ke peneliti.',
-  upNone:'Tidak ada data untuk dikirim.', upDemoMsg:'Simpan berkas di bawah.', btnDl2:'Simpan {n}',
-  recoverText:'Ada rekaman yang belum terkirim dari sesi sebelumnya.', btnRecover:'Kirim sekarang',
-  logHelp:'Berisi waktu tiap bagian dan kartu. Ikut terkirim otomatis bersama rekaman.'
-});
-Object.assign(T.en, {
-  introRec: MODE === 'features'
-    ? 'This page computes your head direction right on your device and only sends numbers, with no video and no audio.'
-    : 'This page records video of your face and voice through your laptop camera and microphone during the session, then sends it to the researcher\'s access-restricted Google Drive. Details are in the consent form.',
-  chk1:'I am sitting in front of the laptop, my face and shoulders are fully visible in the preview, about 50 to 80 cm away.',
-  chk2:'The laptop is stable and I will not tilt the screen during the session.',
-  chk3:'Light comes from the front or side, not from behind me.',
-  chk4:'The room is fairly quiet. Headsets are fine.',
-  chk5:'I will keep this page open until it says Sent.',
-  startHint:'Make sure the camera preview looks good, then press Start. Recording begins right away.',
-  beepNote:'Recording has started. Sit as you normally would.',
-  inviteLabel:'Invite code from the researcher',
-  camTitle:'Camera check',
-  camHelp: WANT_VIDEO ? 'Allow the camera and microphone when the browser asks. The preview is only to check your position.' : 'Allow the camera when the browser asks. The microphone is not used.',
-  camBtn:'Turn on camera', camOk:'Camera on', camNo:'Camera not on yet',
-  camDenied:'Camera permission was denied. Allow it in the browser settings and reload the page.',
-  camDark:'Too dark, add light from the front', camLightOk:'Light is fine',
-  faceOk:'Face detected at a good size', faceFar:'Face too small, move closer', faceNear:'Face too large, move back',
-  faceNone:'No face detected yet', faceLoading:'Loading face check...',
-  faceNA:'Face check unavailable, make sure your face and shoulders are fully visible',
-  uploadTitle:'Send the recording',
-  upInfoVid:'The video and session notes (code {code}) are sent to the researcher\'s storage. Do not close the page until it says Sent.',
-  upInfoFeat:'Only head-pose numbers and session notes (code {code}) are sent. No video.',
-  upDemo:'Test mode: there is no upload destination. Files are saved on your device.',
-  upRate:'Rate the session above first, then press Send.',
-  btnSend:'Send recording', btnRetry:'Try sending again',
-  uploading:'Sending {n}: {p}%',
-  upDone:'Sent. Thank you! Your session code is {code}. You may close the page.',
-  upFail:'Sending failed. Try again, or save the files below and send them to the researcher.',
-  upNone:'There is nothing to send.', upDemoMsg:'Save the files below.', btnDl2:'Save {n}',
-  recoverText:'There is a recording from an earlier session that was not sent.', btnRecover:'Send now',
-  logHelp:'Contains the timing of each part and card. It is sent automatically with the recording.'
-});
+/* Detective cases. Each fact is something the robot knows. Suspects (a, b, c) are matched by their
+   Indonesian or English name as a whole word, or by a Russian stem that allows case endings. Other
+   facts match a word that starts with one of the listed stems. `name` is the topic word shown on screen. */
+const CASES = [
+  { id:'cake', culprit:'b',
+    story:L3('Kue cokelat di dapur kantor masih utuh jam tiga sore dan sudah hilang jam empat. Siapa yang mengambilnya?',
+      'A chocolate cake in the office kitchen was whole at three and gone by four. Who took it?',
+      'Шоколадный торт на офисной кухне был цел в три часа и пропал к четырём. Кто его взял?'),
+    facts:[
+      { id:'a', who:L3('Ani', 'Alex', 'Аня'), ru:'ан[яиюе]', say:L3('Ani rapat dari jam tiga sampai jam empat, dan atasannya membenarkan.', 'Alex was in a meeting from three to four, and the manager confirms it.', 'Аня была на совещании с трёх до четырёх, начальник это подтверждает.') },
+      { id:'b', who:L3('Bima', 'Bella', 'Борис'), ru:'борис', say:L3('Bima bilang ia keluar membeli kopi setelah jam tiga. Tapi struk kopinya tercetak pukul setengah tiga.', 'Bella says she went out for coffee after three. But the coffee receipt is printed at half past two.', 'Борис говорит, что ходил за кофе после трёх. Но чек пробит в половине третьего.') },
+      { id:'c', who:L3('Citra', 'Chris', 'Вика'), ru:'вик', say:L3('Citra alergi cokelat. Ia bahkan tidak mau duduk dekat kue itu.', 'Chris is allergic to chocolate and will not even sit near the cake.', 'У Вики аллергия на шоколад, она даже не садится рядом с тортом.') },
+      { id:'kitchen', name:L3('dapur', 'the kitchen', 'кухню'), k:'dapur|kitchen|кухн', say:L3('Pintu dapur dibuka sekali antara jam tiga dan empat. Di meja ada gelas kopi yang masih hangat.', 'The kitchen door was opened once between three and four. A warm coffee cup was left on the table.', 'Дверь кухни открывали один раз между тремя и четырьмя. На столе остался тёплый стакан кофе.') },
+      { id:'cake', name:L3('kue', 'the cake', 'торт'), k:'kue|cake|cokelat|chocolate|торт|шоколад', say:L3('Itu kue cokelat untuk acara kantor sore ini.', 'It was a chocolate cake for the office party this evening.', 'Это был шоколадный торт для вечернего праздника в офисе.') },
+      { id:'when', name:L3('waktunya', 'the time', 'время пропажи'), k:'kapan|hilang|when|gone|vanish|когда|пропал', say:L3('Jam tiga kue masih utuh. Jam empat sudah hilang.', 'At three the cake was whole. At four it was gone.', 'В три торт был цел. В четыре его уже не было.') }],
+    clues:L3(['Tanyakan ke mana tiap orang pergi antara jam tiga dan empat.', 'Cocokkan alibi dengan jamnya.', 'Lihat apa yang tertinggal di dapur.'],
+      ['Ask where each person was between three and four.', 'Check every alibi against the clock.', 'Look at what was left in the kitchen.'],
+      ['Спроси, где был каждый с трёх до четырёх.', 'Сверь каждое алиби со временем.', 'Посмотри, что осталось на кухне.']),
+    solved:L3('Tepat! Bima bilang membeli kopi setelah jam tiga, padahal struknya jam setengah tiga.', 'Correct! Bella claimed to buy coffee after three, but the receipt says half past two.', 'Верно! Борис говорил, что ходил за кофе после трёх, а чек пробит в половине третьего.') },
 
-/* ---------- Cards, replies, puzzles ---------- */
-const hhmm = l => new Date().toLocaleTimeString(l === 'id' ? 'id-ID' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
-const CARDS = [
-  { k:'time',  emo:'happy',
-    say:{ id:'jam berapa sekarang?', en:'what time is it?' },
-    rep:{ id:() => 'Sekarang pukul ' + hhmm('id') + '.', en:() => 'It is ' + hhmm('en') + ' now.' } },
-  { k:'riddle', emo:'happy',
-    say:{ id:'ceritakan satu tebak-tebakan.', en:'tell me a riddle.' },
-    rep:{ id:() => 'Apa yang selalu naik tapi tidak pernah turun? Umur!', en:() => 'What goes up but never comes down? Your age!' } },
-  { k:'greet', emo:'happy',
-    say:{ id:'(sapa aku dalam bahasa daerahmu)', en:'(greet me in your home language)' },
-    rep:{ id:() => 'Aku belum paham bahasa itu, tapi kedengarannya hangat. Terima kasih sudah menyapa!', en:() => 'I do not know that language yet, but it sounds warm. Thanks for the greeting!' } },
-  { k:'weather', emo:'curious',
-    say:{ id:'bagaimana cuaca hari ini?', en:'how is the weather today?' },
-    rep:{ id:() => 'Aku belum bisa melihat langit. Coba tanya jendelamu!', en:() => 'I cannot see the sky yet. Try asking your window!' } },
-  { k:'howare', emo:'happy',
-    say:{ id:'apa kabar?', en:'how are you?' },
-    rep:{ id:() => 'Baik! Baterai penuh dan mataku berkedip-kedip.', en:() => 'Good! Battery full and my eyes are blinking.' } },
-  { k:'cheer', emo:'happy',
-    say:{ id:'tolong semangati aku.', en:'please cheer me up.' },
-    rep:{ id:() => 'Kamu sudah melakukan satu hal hari ini: duduk dan mencoba. Itu dihitung.', en:() => 'You already did one thing today: sat down and tried. That counts.' } },
-  { k:'name', emo:'happy',
-    say:{ id:'siapa namamu dan siapa yang memberi nama?', en:'what is your name and who named you?' },
-    rep:{ id:n => 'Namaku ' + n + '. Kamu yang memberiku nama, dan aku suka.', en:n => 'My name is ' + n + '. You named me, and I like it.' } },
-  { k:'math', emo:'happy',
-    say:{ id:'tujuh kali delapan berapa?', en:'what is seven times eight?' },
-    rep:{ id:() => 'Lima puluh enam!', en:() => 'Fifty-six!' } },
-  { k:'fact', emo:'surprised',
-    say:{ id:'ceritakan satu fakta menarik.', en:'tell me an interesting fact.' },
-    rep:{ id:() => 'Gurita punya tiga jantung.', en:() => 'An octopus has three hearts.' } },
-  { k:'alone', emo:'sleepy',
-    say:{ id:'apa yang kamu lakukan kalau tidak ada orang?', en:'what do you do when nobody is around?' },
-    rep:{ id:() => 'Aku berkedip dan menghitung detik. Jadi sepi pun tidak membosankan.', en:() => 'I blink and count seconds. So quiet is never boring.' } },
-  { k:'like', emo:'happy',
-    say:{ id:'ceritakan satu hal yang kamu suka.', en:'tell me one thing you like.' },
-    rep:{ id:() => 'Aku suka cahaya lampu meja di sore hari.', en:() => 'I like the glow of a desk lamp in the evening.' } },
-  { k:'bye', emo:'sleepy',
-    say:{ id:'aku lanjut bekerja dulu, sampai nanti.', en:'I will get back to work, see you later.' },
-    rep:{ id:() => 'Sampai nanti! Aku menunggu di sini.', en:() => 'See you later! I will be right here.' } }
+  { id:'charger', culprit:'b',
+    story:L3('Charger laptop milik Rara hilang dari meja perpustakaan antara jam satu dan jam dua siang. Siapa yang mengambilnya?',
+      'Rara\'s laptop charger vanished from a library desk between one and two pm. Who took it?',
+      'Зарядка от ноутбука Раи пропала со стола в библиотеке между часом и двумя. Кто её взял?'),
+    facts:[
+      { id:'a', who:L3('Dodi', 'Derek', 'Дима'), ru:'дим', say:L3('Laptop Dodi model lama dengan colokan bulat. Charger Rara jenis USB-C, tidak cocok untuknya.', 'Derek has an old laptop with a round plug. Rara\'s charger is USB-C and would not fit it.', 'У Димы старый ноутбук с круглым разъёмом. Зарядка Раи с USB-C ему не подходит.') },
+      { id:'b', who:L3('Eka', 'Emma', 'Ева'), ru:'ев[аеуыо]', say:L3('Eka bilang ia datang dengan baterai hampir habis dan tanpa charger. Jam dua baterainya sudah penuh.', 'Emma says she arrived with an almost empty battery and no charger. By two her battery was full.', 'Ева говорит, что пришла почти с разряженным ноутбуком и без зарядки. К двум часам батарея была полной.') },
+      { id:'c', who:L3('Fajar', 'Felix', 'Фёдор'), ru:'федор', say:L3('Fajar keluar perpustakaan jam setengah satu. Catatan pintu keluar membuktikannya.', 'Felix left the library at half past twelve. The exit log proves it.', 'Фёдор ушёл из библиотеки в половине первого, это видно по журналу выхода.') },
+      { id:'desk', name:L3('mejanya', 'the desk', 'стол'), k:'meja|desk|стол', say:L3('Meja Rara ada di pojok dekat stopkontak. Hanya dua orang lain yang duduk di dekatnya.', 'Rara\'s desk is in the corner by the socket. Only two other people sat near it.', 'Стол Раи в углу у розетки. Рядом сидели только двое.') },
+      { id:'charger', name:L3('chargernya', 'the charger', 'зарядку'), k:'charger|pengisi|baterai|colokan|battery|plug|usb|зарядк|батаре|разъем', say:L3('Chargernya jenis USB-C, warnanya putih, dengan stiker bintang.', 'It is a white USB-C charger with a star sticker.', 'Это белая зарядка с USB-C и наклейкой в виде звезды.') },
+      { id:'when', name:L3('waktunya', 'the time', 'время пропажи'), k:'kapan|hilang|when|gone|vanish|когда|пропал', say:L3('Jam satu chargernya masih ada. Jam dua sudah hilang.', 'At one the charger was there. At two it was gone.', 'В час зарядка была на месте, в два её уже не было.') }],
+    clues:L3(['Cari tahu siapa yang butuh charger itu.', 'Perhatikan jenis colokannya.', 'Bandingkan baterai saat datang dan jam dua.'],
+      ['Find out who needed that charger.', 'Look at the type of plug.', 'Compare battery levels on arrival and at two.'],
+      ['Выясни, кому нужна была эта зарядка.', 'Обрати внимание на тип разъёма.', 'Сравни заряд батареи при приходе и в два часа.']),
+    solved:L3('Tepat! Eka datang tanpa charger, tapi baterainya penuh jam dua.', 'Correct! Emma came without a charger, yet her battery was full at two.', 'Верно! Ева пришла без зарядки, а к двум батарея была полной.') },
+
+  { id:'window', culprit:'b',
+    story:L3('Jendela kelas pecah saat jam istirahat. Di bawahnya ada bola sepak berlumpur. Siapa pelakunya?',
+      'A classroom window broke during the break. A muddy football lay under it. Who did it?',
+      'Во время перемены разбилось окно в классе. Под ним лежал грязный футбольный мяч. Кто это сделал?'),
+    facts:[
+      { id:'a', who:L3('Gita', 'Grace', 'Галя'), ru:'гал', say:L3('Gita membantu guru di perpustakaan sepanjang istirahat. Gurunya membenarkan.', 'Grace helped the teacher in the library for the whole break. The teacher confirms it.', 'Галя всю перемену помогала учителю в библиотеке. Учитель это подтверждает.') },
+      { id:'b', who:L3('Hadi', 'Henry', 'Игорь'), ru:'игор', say:L3('Hadi bilang ia di kantin dan tidak keluar. Tapi sepatunya penuh lumpur dari lapangan.', 'Henry says he was in the canteen and never went out. But his shoes are covered in mud from the field.', 'Игорь говорит, что был в столовой и не выходил. Но его ботинки в грязи с поля.') },
+      { id:'c', who:L3('Intan', 'Iris', 'Катя'), ru:'кат[яиюе]', say:L3('Kaki Intan terkilir dan ia duduk di kelas sebelah. Ia tidak bisa menendang bola.', 'Iris has a sprained ankle and sat in the next room. She could not kick a ball.', 'Катя подвернула ногу и сидела в соседнем классе. Она не могла ударить по мячу.') },
+      { id:'window', name:L3('jendelanya', 'the window', 'окно'), k:'jendela|kaca|window|glass|окн|окон|стекл', say:L3('Kacanya pecah ke arah dalam, jadi bolanya datang dari lapangan.', 'The glass broke inwards, so the ball came from the field.', 'Стекло разбито внутрь, значит, мяч прилетел с поля.') },
+      { id:'ball', name:L3('bolanya', 'the ball', 'мяч'), k:'bola|ball|мяч', say:L3('Bola sepak itu basah dan berlumpur, seperti baru dipakai di lapangan.', 'The football is wet and muddy, as if just used on the field.', 'Мяч мокрый и в грязи, будто только что с поля.') },
+      { id:'field', name:L3('lapangannya', 'the field', 'поле'), k:'lapangan|lumpur|field|mud|пол[еяю]|гряз', say:L3('Pagi tadi hujan, jadi lapangan becek. Siapa pun yang ke sana pasti sepatunya kotor.', 'It rained this morning, so the field is muddy. Anyone who went there has dirty shoes.', 'Утром был дождь, поле раскисло. Кто там был, у того грязная обувь.') }],
+    clues:L3(['Cari tahu siapa yang keluar ke lapangan.', 'Lihat sepatu tiap orang.', 'Siapa yang bisa menendang bola hari itu?'],
+      ['Find out who went out to the field.', 'Look at everyone\'s shoes.', 'Who could kick a ball that day?'],
+      ['Выясни, кто выходил на поле.', 'Посмотри на обувь каждого.', 'Кто в тот день мог ударить по мячу?']),
+    solved:L3('Tepat! Hadi bilang tidak keluar, tapi sepatunya berlumpur dari lapangan.', 'Correct! Henry said he never went out, but his shoes carry mud from the field.', 'Верно! Игорь говорил, что не выходил, а его ботинки в грязи с поля.') },
+
+  { id:'coffee', culprit:'c',
+    story:L3('Pagi ini mesin kopi kantor rusak dan airnya tumpah ke lantai. Siapa yang merusaknya?',
+      'This morning the office coffee machine broke and water spilled on the floor. Who broke it?',
+      'Утром в офисе сломалась кофемашина, и вода разлилась по полу. Кто её сломал?'),
+    facts:[
+      { id:'a', who:L3('Joko', 'Jack', 'Олег'), ru:'олег', say:L3('Joko tidak minum kopi. Ia hanya minum teh dari termosnya sendiri.', 'Jack does not drink coffee. He only drinks tea from his own flask.', 'Олег не пьёт кофе, только чай из своего термоса.') },
+      { id:'b', who:L3('Kiki', 'Kate', 'Нина'), ru:'нин', say:L3('Kiki datang paling pagi dan membuat kopi jam tujuh. Setelah itu mesinnya masih baik.', 'Kate came first and made coffee at seven. The machine still worked after that.', 'Нина пришла раньше всех и сварила кофе в семь. После этого машина работала.') },
+      { id:'c', who:L3('Lukas', 'Leo', 'Паша'), ru:'паш', say:L3('Lukas bilang ia tidak menyentuh mesin itu. Tapi sidik jarinya ada di tangki air yang retak.', 'Leo says he never touched the machine. But his fingerprints are on the cracked water tank.', 'Паша говорит, что не трогал машину. Но на треснувшем баке для воды его отпечатки.') },
+      { id:'machine', name:L3('mesin kopinya', 'the machine', 'кофемашину'), k:'mesin|machine|кофемашин|машин', say:L3('Mesinnya mati karena tangki airnya retak dan airnya bocor.', 'The machine stopped because its water tank cracked and leaked.', 'Машина сломалась, потому что треснул бак и вытекла вода.') },
+      { id:'water', name:L3('airnya', 'the water', 'воду'), k:'air|tumpah|tangki|water|spill|tank|вод|бак|разлил', say:L3('Air tumpah sekitar jam delapan. Tangkinya diisi terlalu penuh lalu dipaksa masuk.', 'The water spilled around eight. The tank was overfilled and forced back in.', 'Вода разлилась около восьми. Бак перелили и с силой вставили обратно.') },
+      { id:'when', name:L3('waktunya', 'the time', 'время поломки'), k:'kapan|rusak|when|broke|когда|слома', say:L3('Jam tujuh mesin masih jalan. Jam delapan sudah rusak.', 'At seven the machine worked. By eight it was broken.', 'В семь машина работала, к восьми уже сломалась.') }],
+    clues:L3(['Siapa yang minum kopi pagi ini?', 'Kapan mesin terakhir masih berfungsi?', 'Perhatikan tangki airnya.'],
+      ['Who drank coffee this morning?', 'When did the machine last work?', 'Look at the water tank.'],
+      ['Кто пил кофе сегодня утром?', 'Когда машина ещё работала?', 'Обрати внимание на бак для воды.']),
+    solved:L3('Tepat! Lukas bilang tidak menyentuh mesin, tapi sidik jarinya ada di tangki yang retak.', 'Correct! Leo said he never touched it, but his prints are on the cracked tank.', 'Верно! Паша говорил, что не трогал машину, а на баке его отпечатки.') },
+
+  { id:'key', culprit:'a',
+    story:L3('Kunci laboratorium hilang setelah praktikum sore. Tanpa kunci itu, lab tidak bisa dibuka besok. Siapa yang membawanya?',
+      'The lab key went missing after the afternoon class. Without it the lab cannot open tomorrow. Who has it?',
+      'После вечернего практикума пропал ключ от лаборатории. Без него завтра её не открыть. У кого он?'),
+    facts:[
+      { id:'a', who:L3('Maya', 'Mia', 'Оля'), ru:'ол[яиюе]', say:L3('Maya bilang ia tidak pernah memegang kunci. Tapi gantungan kunci kucing miliknya tertinggal di pintu lab.', 'Mia says she never held the key. But her cat-shaped key charm was found at the lab door.', 'Оля говорит, что не брала ключ. Но её брелок в виде кошки нашли у двери лаборатории.') },
+      { id:'b', who:L3('Nanda', 'Noah', 'Рома'), ru:'ром[аеуы]', say:L3('Nanda pulang paling awal untuk mengejar kereta. Tiketnya tercetak jam empat.', 'Noah left first to catch a train. His ticket is stamped at four.', 'Рома ушёл первым на поезд. На билете стоит время 16:00.') },
+      { id:'c', who:L3('Oki', 'Owen', 'Лиза'), ru:'лиз', say:L3('Oki menunggu di luar karena lupa kartu mahasiswanya. Ia tidak masuk lab hari itu.', 'Owen waited outside because he forgot his student card. He never entered the lab that day.', 'Лиза ждала снаружи, потому что забыла пропуск. В тот день она не заходила в лабораторию.') },
+      { id:'key', name:L3('kuncinya', 'the key', 'ключ'), k:'kunci|key|ключ', say:L3('Kuncinya kunci besi biasa. Biasanya dipasang di gantungan milik siapa pun yang terakhir mengunci.', 'It is a plain metal key. Whoever locks up usually clips it to their own key ring.', 'Это обычный металлический ключ. Кто закрывает лабораторию, вешает его на свою связку.') },
+      { id:'door', name:L3('pintunya', 'the door', 'дверь'), k:'pintu|gantungan|door|charm|ring|двер|брелок|связк', say:L3('Di depan pintu lab ditemukan gantungan kunci berbentuk kucing yang talinya putus.', 'A cat-shaped key charm with a broken strap was found at the lab door.', 'У двери лаборатории нашли брелок-кошку с порванным ремешком.') },
+      { id:'when', name:L3('waktunya', 'the time', 'время пропажи'), k:'kapan|hilang|when|missing|когда|пропал', say:L3('Praktikum selesai jam lima. Lab dikunci jam lima lewat sepuluh.', 'Class ended at five. The lab was locked at ten past five.', 'Практикум закончился в пять, лабораторию закрыли в пять десять.') }],
+    clues:L3(['Siapa yang benar-benar ada di lab sampai akhir?', 'Apa yang tertinggal di pintu?', 'Cocokkan cerita tiap orang dengan buktinya.'],
+      ['Who was really in the lab until the end?', 'What was left at the door?', 'Match each story to the evidence.'],
+      ['Кто на самом деле был в лаборатории до конца?', 'Что осталось у двери?', 'Сверь рассказ каждого с уликами.']),
+    solved:L3('Tepat! Maya bilang tidak memegang kunci, tapi gantungan kuncinya tertinggal di pintu lab.', 'Correct! Mia said she never held the key, but her charm was at the lab door.', 'Верно! Оля говорила, что не брала ключ, а её брелок нашли у двери.') },
+
+  { id:'lunch', culprit:'a',
+    story:L3('Roti lapis ayam milik Pak Rudi hilang dari kulkas bersama. Di tempat sampah ada bungkusnya dan serbet bernoda saus pedas. Siapa yang memakannya?',
+      'Mr Reed\'s chicken sandwich vanished from the shared fridge. The wrapper is in the bin with a napkin stained with hot sauce. Who ate it?',
+      'Из общего холодильника пропал бутерброд с курицей Петра Ивановича. В мусорке обёртка и салфетка в остром соусе. Кто его съел?'),
+    facts:[
+      { id:'a', who:L3('Putri', 'Paula', 'Даша'), ru:'даш', say:L3('Putri bilang ia tidak makan siang hari ini. Tapi botol saus pedas di mejanya tinggal setengah.', 'Paula says she skipped lunch today. But the hot sauce bottle on her desk is half empty.', 'Даша говорит, что сегодня не обедала. Но бутылка острого соуса на её столе наполовину пуста.') },
+      { id:'b', who:L3('Rian', 'Ryan', 'Миша'), ru:'миш', say:L3('Rian vegetarian. Ia tidak makan daging ayam.', 'Ryan is vegetarian and does not eat chicken.', 'Миша вегетарианец и не ест курицу.') },
+      { id:'c', who:L3('Sinta', 'Sarah', 'Юля'), ru:'юл', say:L3('Sinta tidak tahan pedas. Ia selalu minta makanan tanpa sambal.', 'Sarah cannot stand spicy food and always orders it mild.', 'Юля не переносит острое и всегда просит без соуса.') },
+      { id:'fridge', name:L3('kulkasnya', 'the fridge', 'холодильник'), k:'kulkas|roti|ayam|fridge|sandwich|chicken|холодильн|бутерброд|куриц', say:L3('Roti lapis ayam itu ada di kulkas sampai jam dua belas.', 'The chicken sandwich was in the fridge until noon.', 'Бутерброд с курицей лежал в холодильнике до полудня.') },
+      { id:'bin', name:L3('tempat sampahnya', 'the bin', 'мусорку'), k:'sampah|serbet|bungkus|bin|trash|napkin|wrapper|мусор|салфет|обертк', say:L3('Di tempat sampah ada bungkus roti dan serbet dengan noda saus pedas merah.', 'The bin holds the wrapper and a napkin with red hot-sauce stains.', 'В мусорке обёртка и салфетка с пятнами красного острого соуса.') },
+      { id:'sauce', name:L3('sausnya', 'the sauce', 'соус'), k:'saus|sambal|pedas|sauce|spicy|соус|остр', say:L3('Saus pedas itu bukan dari kantin. Hanya satu orang yang menyimpan botolnya di meja.', 'The hot sauce is not from the canteen. Only one person keeps a bottle on their desk.', 'Этот соус не из столовой. Бутылку держит на столе только один человек.') }],
+    clues:L3(['Siapa yang suka makanan pedas?', 'Siapa yang bisa makan daging ayam?', 'Lihat meja tiap orang.'],
+      ['Who likes spicy food?', 'Who can eat chicken?', 'Look at everyone\'s desk.'],
+      ['Кто любит острое?', 'Кто ест курицу?', 'Посмотри на стол каждого.']),
+    solved:L3('Tepat! Putri bilang tidak makan siang, tapi saus pedasnya tinggal setengah.', 'Correct! Paula said she skipped lunch, yet her hot sauce is half gone.', 'Верно! Даша говорила, что не обедала, а соуса стало вдвое меньше.') }
 ];
-const FREE = { k:'free', emo:'curious', say:{ id:'(tanyakan apa saja)', en:'(ask anything)' } };
-const FREE_REPLIES = {
-  id:['Pertanyaan bagus! Aku masih belajar, coba tanya hal lain.', 'Hmm, aku perlu memikirkannya lebih lama. Sementara itu, aku berkedip dulu.', 'Menarik sekali! Aku mencatatnya di kepala kecilku.'],
-  en:['Good question! I am still learning, try asking something else.', 'Hmm, I need to think about that longer. Meanwhile, I will blink.', 'How interesting! I will note it down in my little head.']
-};
-const WORDS = {
-  id:['KUCING','SEPEDA','BANDARA','PELANGI','KOMPUTER','SEKOLAH','JENDELA','MATAHARI','KEBUN','SAMUDRA','KEMBANG','LAMPION'],
-  en:['ROBOT','WINDOW','BRIDGE','GARDEN','PLANET','COFFEE','SILVER','ORANGE','THUNDER','PENCIL','MARKET','CANDLE']
-};
-const SEQ = [['2, 4, 8, 16, ?','32'],['3, 6, 9, 12, ?','15'],['1, 1, 2, 3, 5, ?','8'],['5, 10, 20, 40, ?','80'],
-  ['100, 90, 80, 70, ?','60'],['2, 3, 5, 7, 11, ?','13'],['1, 4, 9, 16, ?','25'],['7, 14, 21, 28, ?','35'],
-  ['81, 27, 9, 3, ?','1'],['1, 2, 4, 7, 11, ?','16'],['64, 32, 16, 8, ?','4'],['10, 9, 7, 4, ?','0']];
+function hit(f, s) {
+  if (!f.re) f.re = f.who
+    ? new RegExp('(^| )(' + norm(f.who.id) + '|' + norm(f.who.en) + ')( |$)|(^| )' + f.ru, 'u')
+    : new RegExp('(^| )(' + f.k + ')', 'u');
+  return f.re.test(s);
+}
+// Requests that do not depend on a case. First match wins.
+const GENERIC = [
+  ['listen',   /dengar|cerita|curhat|listen|let me tell|послушай|выслуш|расскажу/],
+  ['practice', /latihan|practi[cs]e|практик|трениров/],
+  ['left',     /sisa waktu|berapa lama|time left|how long|how much time|сколько (еще )?остал/],
+  ['score',    /sudah berapa|berapa kasus|skor|hasilku|how many|score|progress|сколько .*(дел|раскры)|счет/],
+  ['swap',     /ganti kasus|kasus lain|kasus berikut|lewati|another case|next case|skip|другое дело|следующ|пропуст/],
+  ['clue',     /petunjuk|bantu|clue|hint|help|подсказ|улик|помоги|помощ/],
+  ['time',     /jam berapa|pukul berapa|what time is|the time now|current time|который час|сколько времени/],
+  ['hello',    /(^| )(halo|hai|hello|hi|hey)( |$)|привет|здравств/]
+];
+// c is the current case in the detective parts, otherwise null.
+function route(text, block, c) {
+  const s = norm(text);
+  if (c) { const f = c.facts.find(f => hit(f, s)); if (f) return 'fact:' + f.id; }
+  const m = GENERIC.find(g => g[1].test(s));
+  if (!m) return 'free';
+  if ((m[0] === 'listen' || m[0] === 'practice') && block !== 'C') return 'free';
+  if ((m[0] === 'clue' || m[0] === 'swap') && !c) return 'free';
+  return m[0];
+}
+// Recognisers return several guesses; take the first one that means something.
+function routeAlts(alts, block, c) {
+  for (const a of alts) { const r = route(a, block, c); if (r !== 'free') return [r, a]; }
+  return ['free', alts[0]];
+}
+const YES = /(^| )(ya|iya|boleh|mau|yes|yeah|sure|okay|да|давай|хочу)( |$)/;
+const DONE = /(^| )(selesai|done|finished|готово|закончил|закончила)( |$)/;
+// Said without the name shortly after an answer: the participant rejects or corrects it.
+const NOTME = /(bukan|tidak|nggak|gak|enggak) (lagi )?(bicara|ngomong|nanya|bilang) (sama|ke|dengan|untuk|buat) (kamu|kau)|bukan (ke|sama|untuk|buat) (kamu|kau)|(not|wasn t|was not) (talking|speaking) to you|не (с )?тоб|не тебе/;
+const CORRECT = /(^| )(salah|keliru|bukan|harusnya|seharusnya|mestinya|wrong|incorrect|should be|should have|not right|неправ|не так|должн|ошиб)/;
+/* PURE-END */
+
+// Short listener sounds shown while the person pauses.
+const BACKCH = L3(['Hmm.', 'Lalu?', 'Oke.', 'Terus?'], ['Mm-hm.', 'And then?', 'Okay.', 'Go on.'], ['Угу.', 'А дальше?', 'Понятно.', 'Так.']);
+const TOPICS = L3(
+  ['Ceritakan sarapanmu hari ini.', 'Jelaskan pekerjaan atau kuliahmu kepada anak sepuluh tahun.', 'Ceritakan tempat yang ingin kamu kunjungi.', 'Ceritakan film atau serial terakhir yang kamu tonton.'],
+  ['Describe your breakfast today.', 'Explain your job or studies to a ten-year-old.', 'Describe a place you would like to visit.', 'Describe the last film or series you watched.'],
+  ['Расскажи, что ты ел(а) на завтрак.', 'Объясни свою работу или учёбу десятилетнему ребёнку.', 'Расскажи о месте, где ты хочешь побывать.', 'Расскажи о последнем фильме или сериале, который ты смотрел(а).']);
+// Rotating replies: start at a random item, then step through the list.
+const ROT = {};
+function rot(key, arr) {
+  ROT[key] = ROT[key] == null ? Math.floor(Math.random() * arr.length) : (ROT[key] + 1) % arr.length;
+  return arr[ROT[key]];
+}
 
 /* ---------- Helpers & state ---------- */
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const pick = a => a[Math.floor(Math.random() * a.length)];
-const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
 const pad = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
 const S = {
-  lang:'id', name:'Buddy', voiceOn:false, voiceOk:false, voiceTouched:false,
-  code:'', t0:null, wall0:null, log:[], aborted:false, cancel:null,
-  block:null, blockReplies:0, card:null, deck:shuffle(CARDS), di:0, cAlt:0,
-  busy:false, stageOn:false, pz:null, tickT:null, blockResolve:null, sched:[], screen:'s-intro', enjoy:null
+  lang:'id', name:'Budi', voiceOn:false, voiceOk:false, voiceTouched:false,
+  code:'', invite:'', t0:null, wall0:null, log:[], aborted:false, cancel:null,
+  block:null, replies:0, solved:0, blockEnd:0, warmStep:0, ask:null, checkedIn:false, listen:null,
+  fb:null, caseIdx:0, caseDone:false, posBad:null, posWarnT:-1e9, traits:{}, traitsLogged:false, recovered:null, wake:null,
+  busy:false, stageOn:false, tickT:null, blockResolve:null, sched:[], screen:'s-intro'
 };
+const R = { stream:null, recording:false, ready:false, lm:null, lmState:'idle', feat:[], tick:null,
+  face:null, light:null, cv:null, pose:null, posT:null, upload:{ state:'idle' }, sent:{} };
 const t = (key, vars) => {
-  let s = (T[S.lang] && T[S.lang][key]) ?? T.id[key] ?? key;
-  if (vars) for (const k in vars) s = s.replace('{' + k + '}', vars[k]);
+  let s = TX[key] ? TX[key][LI[S.lang]] : key;
+  if (vars) for (const k in vars) s = s.split('{' + k + '}').join(vars[k]);
   return s;
 };
 const SCREENS = ['s-intro','s-setup','s-calib','s-blockintro','s-block','s-rate','s-end'];
@@ -677,11 +766,10 @@ const SCREENS = ['s-intro','s-setup','s-calib','s-blockintro','s-block','s-rate'
 function logEv(type, detail = '') {
   if (S.t0 == null) return;
   S.log.push({ t: Math.round(performance.now() - S.t0), type, detail: String(detail) });
-  if (S.screen === 's-end') $('logOut').value = csvText();
 }
 function csvText() {
   const q = v => '"' + String(v).replace(/"/g, '""') + '"';
-  const head = ['# session_code=' + S.code, '# session_start_wallclock=' + (S.wall0 ? S.wall0.toISOString() : ''), '# lang=' + S.lang, '# page_version=2', 't_ms,event,detail'];
+  const head = ['# session_code=' + S.code, '# session_start_wallclock=' + (S.wall0 ? S.wall0.toISOString() : ''), '# lang=' + S.lang, '# device=' + DEVICE, '# page_version=7', 't_ms,event,detail'];
   return head.concat(S.log.map(e => e.t + ',' + e.type + ',' + q(e.detail))).join('\n');
 }
 
@@ -714,6 +802,7 @@ const CHIRP = {
 function syncBeep() { [0, .3, .6].forEach(at => sweep(1000, 1000, .15, at, .3, 'sine')); sweep(1500, 1500, .3, .95, .3, 'sine'); }
 function chime() { sweep(660, 660, .18, 0, .12, 'sine'); }
 
+
 function refreshVoice() {
   const vs = ('speechSynthesis' in window) ? speechSynthesis.getVoices() : [];
   S.voiceOk = vs.some(v => v.lang.toLowerCase().startsWith(S.lang));
@@ -737,6 +826,7 @@ function speak(text) {
     } catch (e) { res(); }
   });
 }
+
 
 /* ---------- Robot face ---------- */
 const NS = 'http://www.w3.org/2000/svg';
@@ -784,15 +874,18 @@ async function blink() {
 }
 function setRing(state) { $('robot').dataset.ring = state; }
 let idleT = null;
-// The robot never reacts to the participant: it only blinks and glances at random.
+// Idle life: blinking, and random glances when no face is being followed (see followFace).
 function idleLoop() {
   clearTimeout(idleT);
   idleT = setTimeout(async () => {
     if (S.stageOn && !S.busy) {
       if (Math.random() < 0.7) await blink();
       else if (face.emo === 'neutral') {
-        setFace('neutral', pick([-1, 1]), 0);
-        setTimeout(() => { if (face.emo === 'neutral' && !S.busy) setFace('neutral', 0, 0); }, 1100);
+        const following = CONFIG.GAZE_FOLLOW && R.pose && R.pose.face === 1 && performance.now() - R.pose.t < 1000;
+        if (!following) {   // random glances only while the eyes are not following a face
+          setFace('neutral', pick([-1, 1]), 0);
+          setTimeout(() => { if (face.emo === 'neutral' && !S.busy) setFace('neutral', gaze.dx, gaze.dy); }, 1100);
+        }
       }
     }
     idleLoop();
@@ -814,125 +907,426 @@ function hud(label, time, pct) {
   if (pct != null) $('hudBar').style.width = pct + '%';
 }
 
+
 /* ---------- Language ---------- */
 function applyLang() {
   document.documentElement.lang = S.lang;
+  document.title = t('brand');
   document.querySelectorAll('[data-i]').forEach(el => { el.textContent = t(el.dataset.i); });
   document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === S.lang)));
-  $('robotName').placeholder = 'Buddy';
+  $('robotName').placeholder = NAME_DEF[S.lang];
   const hasContact = CONFIG.RESEARCHER || CONFIG.CONTACT;
   $('contactLine').hidden = !hasContact;
   if (hasContact) $('contactLine').textContent = t('contact', { who: CONFIG.RESEARCHER || '-', c: CONFIG.CONTACT || '-' });
   $('consentLink').hidden = !CONFIG.CONSENT_URL;
   if (CONFIG.CONSENT_URL) $('consentLink').href = CONFIG.CONSENT_URL;
   $('sessCode').textContent = S.code;
-  refreshVoice();
-  if (S.screen === 's-block' && S.card) renderCard();
-  if (S.screen === 's-block' && S.pz) renderPuzzle(true);
-  if (S.screen === 's-block' && !S.busy) caption(t('stIdle'), true);
+  refreshVoice(); updateCheck();
+  if (S.screen === 's-block') { renderBlock(true); if (!S.busy) robotIdle(); }
   if (S.screen === 's-end') renderEnd();
   if (S.screen === 's-rate') $('btnRateNext').textContent = S.block === 'C' ? t('btnFinish') : t('btnNext');
 }
 
-/* ---------- Cards & puzzles ---------- */
-function nextCard() {
-  if (S.block === 'C' && S.cAlt++ % 2 === 0) return FREE;
-  return S.deck[S.di++ % S.deck.length];
+
+/* ---------- The robot's replies ---------- */
+const hhmm = l => new Date().toLocaleTimeString(SR_LANG[l] === 'en-US' ? 'en-GB' : SR_LANG[l], { hour: '2-digit', minute: '2-digit' });
+const detective = b => b === 'A' || b === 'B';
+function curCase() { return detective(S.block) && S.caseIdx < CASES.length ? CASES[S.caseIdx] : null; }
+function replyFor(intent, heard) {
+  const l = S.lang, say = (id, en, ru) => L3(id, en, ru)[l], c = curCase();
+  if (intent.startsWith('fact:')) return c.facts.find(f => f.id === intent.slice(5)).say[l];
+  const left = Math.max(0, Math.round((S.blockEnd - performance.now()) / 1000)), m = Math.round(left / 60);
+  switch (intent) {
+    case 'clue': return rot('clue-' + c.id, c.clues[l]);
+    case 'swap': nextCase('skip'); return t('caseSkip');
+    case 'left': return left >= 90 ? say('Sekitar ' + m + ' menit lagi.', 'About ' + m + ' more minutes.', 'Ещё примерно ' + m + ' мин.')
+      : say('Sekitar ' + left + ' detik lagi.', 'About ' + left + ' seconds left.', 'Осталось примерно ' + left + ' сек.');
+    case 'score': return say('Kasus terpecahkan: ' + S.solved + '.', 'Cases solved: ' + S.solved + '.', 'Раскрыто дел: ' + S.solved + '.');
+    case 'time': return say('Sekarang pukul ' + hhmm(l) + '.', 'It is ' + hhmm(l) + ' now.', 'Сейчас ' + hhmm(l) + '.');
+    case 'hello': return say('Halo! Aku ' + S.name + '. Senang bertemu denganmu.', 'Hello! I am ' + S.name + '. Nice to meet you.', 'Привет! Я ' + S.name + '. Рад познакомиться.');
+  }
+  return t('freeReply', { x: heard, ex: examples(S.block)[0] });
 }
-function renderCard() {
-  $('wake').textContent = t('wake', { n: S.name });
-  $('say').textContent = S.card.say[S.lang];
+function examples(b) {
+  const n = S.name, c = detective(b) && S.caseIdx < CASES.length ? CASES[S.caseIdx] : null;
+  if (c) return ['ex1', 'ex2', 'ex3'].map(k => t(k, { n, s: c.facts[0].who[S.lang], p: c.facts.find(f => f.name).name[S.lang] }));
+  return (b === 'W' ? ['exW1', 'exW2'] : ['exC1', 'exC2', 'exC3']).map(k => t(k, { n }));
 }
-function setCard(c) { S.card = c; renderCard(); logEv('card_shown', c.k); }
-function scramble(w) {
-  let s = w; for (let i = 0; i < 20 && s === w; i++) s = shuffle(w.split('')).join('');
-  return s;
-}
-function newPuzzle() {
-  if (S.block === 'A') {
-    const w = pick(WORDS[S.lang]); S.pz = { type:'word', ans:w, q:scramble(w) };
-  } else if (S.block === 'B') {
-    const [q, a] = pick(SEQ); S.pz = { type:'seq', ans:a, q };
-  } else S.pz = null;
-  renderPuzzle(false);
-}
-function renderPuzzle(keepInput) {
-  const has = !!S.pz;
-  $('pzWrap').hidden = !has; $('freeWrap').hidden = has;
-  if (!has) return;
-  $('pzKicker').textContent = t(S.pz.type === 'word' ? 'pzWord' : 'pzSeq');
-  $('pzQ').textContent = S.pz.q; $('pzQ').classList.toggle('seq', S.pz.type === 'seq');
-  if (!keepInput) { $('pzIn').value = ''; $('pzMsg').textContent = ''; }
-}
-function checkPuzzle() {
-  if (!S.pz) return;
-  const v = $('pzIn').value.trim().toUpperCase();
-  if (!v) return;
-  const msg = $('pzMsg');
-  if (v === S.pz.ans.toUpperCase()) {
-    msg.textContent = t('pzOk'); msg.className = 'small ok';
-    setTimeout(() => { if (S.pz && S.screen === 's-block') newPuzzle(); }, 700);
-  } else { msg.textContent = t('pzNo'); msg.className = 'small'; }
+function renderExamples(ul, b) {
+  ul.textContent = '';
+  for (const e of examples(b)) { const li = document.createElement('li'); li.textContent = e; ul.appendChild(li); }
 }
 
-/* ---------- Robot reply ---------- */
-async function askRobot() {
-  if (S.busy || S.screen !== 's-block' || !S.card) return;
-  S.busy = true;
-  const c = S.card;
-  logEv('reply_request', c.k);
-  setRing('listen'); setFace('neutral', 0, 0); caption(t('stListen'), true); CHIRP.neutral();
-  await sleep(450);
-  if (S.aborted || S.screen !== 's-block') { S.busy = false; return; }
-  setRing('think'); setFace('thinking'); caption(t('stThink'), true); CHIRP.thinking();
-  await sleep(700 + Math.random() * 300);
-  if (S.aborted || S.screen !== 's-block') { S.busy = false; return; }
-  let text, emo;
-  if (c === FREE) { text = pick(FREE_REPLIES[S.lang]); emo = 'curious'; }
-  else { text = c.rep[S.lang](S.name); emo = c.emo; }
-  logEv('reply_start', c.k);
-  setRing('speak'); setFace(emo, 0, 0); caption(text, false); CHIRP[emo] && CHIRP[emo]();
-  const hold = Math.min(6000, Math.max(2200, text.length * 55));
-  await Promise.all([speak(text), sleep(hold)]);
-  logEv('reply_end', c.k);
-  S.busy = false;
-  if (S.aborted || S.screen !== 's-block') return;
-  setRing('idle'); setFace('neutral', 0, 0); caption(t('stIdle'), true);
-  S.blockReplies++;
-  $('nudge').hidden = true;
-  setCard(nextCard());
+/* ---------- Speech to text ---------- */
+// The browser's own recogniser. On-device where the browser offers it, otherwise the browser maker's
+// service (the participant is told which). No audio is stored by this page. A sentence ends only after
+// END_PAUSE_MS without new words, so a short pause inside a sentence does not make the robot answer.
+const STT = { get SR() { return window.__mockSR || window.SpeechRecognition || window.webkitSpeechRecognition; },
+  rec:null, want:false, local:false, segT:null, lastT:0, parts:[], pending:false, endT:null, seen:'', named:false, dead:'' };
+async function sttStart() {
+  if (!STT.SR) return;
+  STT.want = true; STT.dead = '';
+  try { STT.local = typeof STT.SR.available === 'function' && (await STT.SR.available({ langs: [SR_LANG[S.lang]], processLocally: true })) === 'available'; }
+  catch (e) { STT.local = false; }
+  sttOpen(); updateCheck(); updateStart();
 }
-function skipCard() {
-  if (S.busy || S.screen !== 's-block') return;
-  logEv('card_skip', S.card ? S.card.k : '');
-  setCard(nextCard());
+function sttOpen() {
+  if (!STT.want || STT.rec || STT.dead) return;
+  const r = new STT.SR();
+  r.lang = SR_LANG[S.lang]; r.continuous = true; r.interimResults = true; r.maxAlternatives = 3;
+  if (STT.local) r.processLocally = true;
+  r.onresult = e => {
+    if (STT.rec !== r) return;
+    const now = performance.now();
+    if (STT.segT == null) { STT.segT = now; speechStart(); }
+    STT.lastT = now; STT.pending = false; clearTimeout(STT.endT);
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const res = e.results[i];
+      if (!res.isFinal) { STT.pending = true; continue; }
+      const alts = Array.from({ length: res.length }, (_, k) => res[k].transcript.replace(/\s+/g, ' ').trim()).filter(Boolean);
+      if (alts.length) STT.parts.push(alts);
+    }
+    if (STT.parts.length && !STT.pending) STT.endT = setTimeout(sttFlush, CONFIG.END_PAUSE_MS);
+  };
+  r.onerror = e => {
+    if (['no-speech', 'aborted'].includes(e.error)) return;
+    logEv('stt_error', e.error);
+    if (e.error !== 'network') { STT.dead = e.error; sttBroken(e.error); }
+  };
+  r.onend = () => { if (STT.rec === r) { STT.rec = null; sttFlush(); } if (STT.want) setTimeout(sttOpen, 300); };
+  STT.rec = r;
+  try { r.start(); } catch (e) { STT.rec = null; setTimeout(sttOpen, 1000); }
+}
+// One finished sentence: the recogniser's pieces joined, with its other guesses for the last piece.
+function sttFlush() {
+  clearTimeout(STT.endT);
+  const parts = STT.parts, t0 = STT.segT;
+  STT.parts = []; STT.segT = null; STT.pending = false;
+  if (t0 == null || !parts.length) return;
+  const dur = Math.round(STT.lastT - t0), head = parts.slice(0, -1).map(p => p[0]).join(' ');
+  logEv('speech_end', dur);
+  onHeard(parts[parts.length - 1].map(a => (head ? head + ' ' : '') + a), dur);
+}
+// Stops listening while the robot talks, so its own voice is not transcribed as the participant's.
+function sttPause() {
+  STT.want = false; STT.segT = null; STT.parts = []; clearTimeout(STT.endT);
+  const r = STT.rec; STT.rec = null; if (r) try { r.abort(); } catch (e) {}
+}
+function sttResume() { STT.want = true; setTimeout(sttOpen, 250); }
+function sttBroken(why) {
+  updateCheck(); updateStart();
+  if (S.stageOn) caption(t('sttFail', { x: why }), false);
+}
+const userTalking = () => STT.segT != null;
+function speechStart() {
+  logEv('speech_start');
+  if (S.listen) clearTimeout(S.listen.quiet);
+  if (S.stageOn && !S.busy) setRing('listen');
+}
+function curName() { return $('robotName').value.trim() || NAME_DEF[S.lang]; }
+function onHeard(alts, dur) {
+  const text = alts[0];
+  if (S.screen === 's-setup') {
+    STT.seen = text;
+    if (alts.some(a => afterName(a, curName()) !== null)) STT.named = true;
+    updateCheck(); return;
+  }
+  if (!R.recording) return;
+  const called = alts.map(a => afterName(a, S.name)).filter(x => x !== null);
+  logEv('heard', (S.listen ? 'listen' : called.length ? 'robot' : S.ask ? 'answer' : S.fb ? 'feedback' : 'none') + '|' + text);
+  if (S.screen !== 's-block' || S.busy) return;
+  if (S.listen) { listenHeard(called[0] ?? text, dur); return; }
+  $('heard').textContent = t('heardLine', { x: text });
+  setRing('idle');
+  if (S.ask) { answerAsk(alts, called); return; }
+  if (called.length) { closeFeedback('next'); respond(called, text); return; }
+  if (S.fb) {
+    const s = alts.map(norm);
+    if (s.some(x => NOTME.test(x))) feedbackSaid('notme'); else if (s.some(x => CORRECT.test(x))) feedbackSaid('corrected');
+  }
+}
+
+/* ---------- Robot reply and spoken feedback ---------- */
+function inBlock() { return !S.aborted && S.screen === 's-block'; }
+function robotIdle() { setRing('idle'); setFace('neutral', gaze.dx, gaze.dy); caption(t('stIdle'), true); }
+async function robotSay(text, emo) {
+  sttPause();
+  setRing('speak'); setFace(emo, 0, 0); caption(text, false); CHIRP[emo] && CHIRP[emo]();
+  await Promise.all([speak(text), sleep(Math.min(7000, Math.max(2200, text.length * 55)))]);
+  sttResume();
+}
+// After an answer, saying "wrong, it should be ..." (no name needed) is logged as a correction; the
+// words themselves are in the heard row. Silence means no complaint.
+function openFeedback(k) {
+  closeFeedback('none');
+  $('fbHint').hidden = false;
+  S.fb = { k, t: setTimeout(() => closeFeedback('none'), CONFIG.CORRECT_MS) };
+}
+function closeFeedback(v) {
+  if (!S.fb) return;
+  clearTimeout(S.fb.t); logEv('feedback', 'k=' + S.fb.k + ';v=' + v);
+  S.fb = null; $('fbHint').hidden = true;
+}
+async function feedbackSaid(v) {
+  closeFeedback(v);
+  S.busy = true;
+  await robotSay(t(v === 'notme' ? 'fbSorry' : 'fbThanks'), 'happy');
+  S.busy = false;
+  if (inBlock()) setRing('idle');
+}
+async function deliver(intent, makeText, feedback) {
+  closeFeedback('next');
+  S.busy = true; logEv('reply_request', intent);
+  setRing('think'); setFace('thinking'); caption(t('stThink'), true);
+  await sleep(500);
+  if (!inBlock()) { S.busy = false; return; }
+  logEv('reply_start', intent);
+  await robotSay(makeText(), 'happy');
+  logEv('reply_end', intent);
+  S.busy = false;
+  if (!inBlock()) return;
+  setRing('idle'); setFace('neutral', gaze.dx, gaze.dy); S.replies++;   // the answer stays readable
+  if (feedback) openFeedback(intent);
+  if (S.block === 'W' && ++S.warmStep === 2) setTimeout(() => S.block === 'W' && S.blockResolve && S.blockResolve(), 4000);
+}
+function respond(called, text) {
+  const [intent, which] = routeAlts(called, S.block, curCase());
+  logEv('intent', intent);
+  if (intent === 'listen' || intent === 'practice') startListen(intent);
+  else deliver(intent, () => replyFor(intent, which || text), true);
+}
+
+/* ---------- Listening sessions: listener mode and speaking practice ---------- */
+async function startListen(mode) {
+  closeFeedback('next');
+  const practice = mode === 'practice', topic = practice ? rot('topic', TOPICS[S.lang]) : '';
+  S.busy = true; logEv('reply_request', mode);
+  await robotSay(practice ? t('practiceIntro', { topic, total: Math.round(CONFIG.PRACTICE_MS / 1000) }) : t('listenIntro'), 'curious');
+  S.busy = false;
+  if (!inBlock()) return;
+  S.listen = { mode, t0: performance.now(), voiced: 0, n: 0, lastBc: 0, quiet: null,
+    max: setTimeout(() => endListen(practice ? 'time' : 'timeout'), practice ? CONFIG.PRACTICE_MS : CONFIG.LISTEN_MAX_MS),
+    tick: practice ? setInterval(listenCaption, 500) : null };
+  logEv(mode + '_start');
+  setRing('listen'); listenCaption();
+}
+function listenCaption() {
+  const L = S.listen; if (!L) return;
+  if (L.mode === 'practice') caption(t('practiceOn', { s: Math.max(0, Math.ceil((CONFIG.PRACTICE_MS - (performance.now() - L.t0)) / 1000)) }), true);
+  else caption(t('listenOn'), true);
+}
+function listenHeard(text, dur) {
+  const L = S.listen;
+  L.voiced += dur; L.n++;
+  if (L.mode === 'practice') return;
+  if (DONE.test(norm(text)) && norm(text).split(' ').length <= 3) { endListen('done'); return; }
+  if (dur >= CONFIG.BACKCHANNEL_MIN_MS && performance.now() - L.lastBc > 2500) backchannel();
+  clearTimeout(L.quiet); L.quiet = setTimeout(() => endListen('silence'), CONFIG.LISTEN_SILENCE_MS);
+}
+async function backchannel() {
+  const L = S.listen; if (!L) return;
+  L.lastBc = performance.now(); logEv('backchannel');
+  sweep(520, 470, .12, 0, .07, 'sine');
+  caption(rot('bc', BACKCH[S.lang]), false);
+  setFace('neutral', gaze.dx, gaze.dy + 1); await sleep(170);
+  if (S.listen === L) setFace('neutral', gaze.dx, gaze.dy);
+  await sleep(1100);
+  if (S.listen === L) listenCaption();
+}
+// Clears a running listening session and logs it. Returns it, or null if there was none.
+function abortListen(why) {
+  const L = S.listen; if (!L) return null;
+  S.listen = null; clearTimeout(L.max); clearTimeout(L.quiet); clearInterval(L.tick);
+  if (STT.segT != null) L.voiced += Math.round(performance.now() - STT.segT);   // still talking when it ended
+  logEv(L.mode + '_end', 'why=' + why + ';voiced_ms=' + L.voiced + ';segments=' + L.n);
+  return L;
+}
+function endListen(why) {
+  const L = abortListen(why);
+  if (!L || !inBlock()) return;
+  deliver(L.mode + '_done', () => L.mode === 'practice'
+    ? t('practiceDone', { s: Math.round(L.voiced / 1000), total: Math.round(CONFIG.PRACTICE_MS / 1000) })
+    : t('listenEnd'), false);
+}
+
+/* ---------- The robot speaks first ---------- */
+// Logged as robot_ask, and any answer as reply_prompted, so analysis can keep these apart from
+// addresses the participant started. Never while the participant is talking.
+const robotCanSpeak = () => !S.busy && !S.listen && !userTalking() && $('breakBanner').hidden;
+async function robotAsk(kind, block, tries) {
+  if (!inBlock() || S.block !== block) return;
+  if (kind === 'offer' ? (!CONFIG.ROBOT_OFFERS || S.replies > 0 || S.ask) : !CONFIG.GOAL_CHECKIN) return;
+  if (kind === 'checkout' && !S.checkedIn) return;
+  if (!robotCanSpeak()) { if ((tries || 0) < 4) setTimeout(() => robotAsk(kind, block, (tries || 0) + 1), 3000); return; }
+  closeFeedback('next');
+  S.busy = true; logEv('robot_ask', kind);
+  await robotSay(t(kind === 'offer' ? 'offerListen' : kind + 'Q'), 'curious');
+  S.busy = false;
+  if (!inBlock() || S.block !== block) return;
+  S.ask = { kind, until: performance.now() + CONFIG.ASK_WINDOW_MS };
+  setRing('listen');
+}
+function answerAsk(alts, called) {
+  const kind = S.ask.kind;
+  if (called.length && routeAlts(called, S.block, curCase())[0] !== 'free') { S.ask = null; respond(called, alts[0]); return; }   // a real request wins
+  if (kind === 'offer' && !alts.some(a => YES.test(norm(a)))) return;
+  S.ask = null; logEv('reply_prompted', kind);
+  if (kind === 'offer') { startListen('listen'); return; }
+  if (kind === 'checkin') S.checkedIn = true;
+  deliver(kind, () => t(kind + 'R'), false);
+}
+function expireAsk() {
+  if (!S.ask || S.busy || performance.now() < S.ask.until) return;
+  logEv('ask_expired', S.ask.kind); S.ask = null; robotIdle();
+}
+// Warns when the face is lost, too far, too close or at the edge for POS_WARN_MS, at most once per
+// POS_COOLDOWN_MS. Turning the head away is normal and does not count.
+function posState() {
+  if (!R.pose || performance.now() - R.pose.t > 1500) return 'ok';   // tracker not running: nothing to judge
+  if (R.pose.face !== 1 || !R.face) return 'none';
+  const [far, near] = DEVICE === 'phone' ? [0.28, 0.8] : [0.16, 0.6];
+  if (R.face.w < far) return 'far';
+  if (R.face.w > near) return 'near';
+  if (R.face.cx < 0.15 || R.face.cx > 0.85 || R.face.cy < 0.15 || R.face.cy > 0.85) return 'edge';
+  return 'ok';
+}
+function checkPos() {
+  if (S.screen !== 's-block' || !$('breakBanner').hidden) { S.posBad = null; return; }
+  const st = posState(), now = performance.now();
+  if (st === 'ok') { if (S.posBad && S.posBad.warned) logEv('pos_ok'); S.posBad = null; return; }
+  if (!S.posBad || S.posBad.st !== st) S.posBad = { st, since: now, warned: !!(S.posBad && S.posBad.warned) };
+  if (now - S.posBad.since < CONFIG.POS_WARN_MS || now - S.posWarnT < CONFIG.POS_COOLDOWN_MS || !robotCanSpeak()) return;
+  S.posWarnT = now; S.posBad.warned = true; logEv('pos_warn', st);
+  S.busy = true;
+  robotSay(t('pos_' + st), 'curious').then(() => { S.busy = false; if (inBlock()) setRing('idle'); });
+}
+
+/* ---------- Block panels and cases ---------- */
+function renderBlock() {
+  const b = S.block, c = curCase(), det = detective(b);
+  $('askTitle').textContent = t('askTitle', { n: S.name });
+  renderExamples($('examples'), b);
+  $('topics').textContent = c ? t('topicLabel') + ' ' + c.facts.map(f => (f.who || f.name)[S.lang]).join(' · ') : '';
+  $('caseWrap').hidden = !det; $('freeWrap').hidden = det;
+  if (det) {
+    $('caseKicker').textContent = c ? t('caseNo', { i: S.caseIdx + 1, total: CASES.length }) : '';
+    $('caseStory').textContent = c ? c.story[S.lang] : t('caseAll');
+    $('caseAccuse').hidden = !c;
+    const row = $('suspects'); row.textContent = '';
+    if (c) for (const f of c.facts.filter(f => f.who)) {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'btn'; btn.textContent = f.who[S.lang]; btn.disabled = S.caseDone;
+      btn.onclick = () => accuse(f.id);
+      row.appendChild(btn);
+    }
+    $('caseMsg').textContent = S.caseDone && c ? c.solved[S.lang] : '';
+  } else {
+    $('freeH').textContent = t(b === 'W' ? 'warmTitle' : 'freeTitle');
+    $('freeP').textContent = t(b === 'W' ? 'warmText' : 'freeText', { n: S.name });
+  }
+}
+function accuse(k) {
+  const c = curCase(); if (!c || S.caseDone) return;
+  const right = k === c.culprit;
+  logEv('case_accuse', c.id + ';' + k + ';right=' + (right ? 1 : 0));
+  if (!right) { $('caseMsg').textContent = t('caseWrong', { n: S.name }); return; }
+  S.solved++; S.caseDone = true; renderBlock();
+  setTimeout(() => { if (S.caseDone && curCase() === c) nextCase('solved'); }, 4000);
+}
+// The next unseen case, in a fixed order so every participant meets the same cases.
+function nextCase(why) {
+  const c = curCase(); if (!c) return;
+  logEv('case_end', c.id + ';' + why);
+  S.caseIdx++; S.caseDone = false;
+  const n = curCase();
+  if (n) { logEv('case_start', n.id); $('heard').textContent = t('caseNext'); }
+  renderBlock();
 }
 
 /* ---------- Session flow ---------- */
 function waitFor(setup) { return new Promise(res => { S.cancel = res; setup(res); }); }
 
+// Calibration. Each phase shows an instruction and its countdown only runs while the head pose
+// matches it, as measured by the face tracker ("look": facing the robot and steady; "away": turned
+// away from the pose held in the look phase, or face out of view). Nobody can get stuck: after
+// CALIB_RELAX_MS the test is loosened, and after CALIB_MAX_WAIT_MS it becomes a plain timer.
+// Without a working face tracker it is a plain timer from the start, as in page version 2.
 async function calibration() {
   show('s-calib'); setRing('idle'); setFace('neutral', 0, 0); caption(t('stIdle'), true);
   hud(t('calibHud'), '', 0);
-  $('calibText').textContent = t('beepNote');
+  $('calibText').textContent = t('beepNote'); $('calibHint').textContent = '';
   await sleep(1700);
-  const phase = async (ev, key) => {
-    if (S.aborted) return;
-    logEv(ev); $('calibText').textContent = t(key);
-    for (let s = CONFIG.CALIB_SECONDS; s > 0 && !S.aborted; s--) {
-      hud(t('calibHud'), pad(s), 100 * (1 - s / CONFIG.CALIB_SECONDS)); sweep(800, 800, .05, 0, .06, 'sine');
-      await sleep(1000);
+  const fresh = () => R.lmState === 'ready' && R.pose && performance.now() - R.pose.t < 700;
+  const median = a => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[Math.floor(b.length / 2)] : null; };
+  const recent = [];   // last few poses with a face, to tell a steady head from one that is still turning
+  const steady = () => {
+    if (recent.length < 5) return false;
+    const ys = recent.map(p => p.yaw), ps = recent.map(p => p.pitch);
+    return Math.max(...ys) - Math.min(...ys) < 6 && Math.max(...ps) - Math.min(...ps) < 6;
+  };
+  let ref = null;      // pose held in the look phase
+  const tests = {
+    look: (p, relaxed) => p.face === 1 && steady() &&
+      (relaxed || (Math.abs(p.yaw) <= CONFIG.CALIB_FRONT_DEG.yaw && Math.abs(p.pitch) <= CONFIG.CALIB_FRONT_DEG.pitch)),
+    away: (p, relaxed) => {
+      if (p.face !== 1) return true;   // turned so far that the face is lost
+      if (!ref) return Math.abs(p.yaw) > 20 || Math.abs(p.pitch) > 15;
+      const k = relaxed ? 0.6 : 1;
+      return Math.abs(p.yaw - ref.yaw) >= k * CONFIG.CALIB_AWAY_DEG.yaw || Math.abs(p.pitch - ref.pitch) >= k * CONFIG.CALIB_AWAY_DEG.pitch;
     }
   };
-  await phase('calib_look', 'calibLook');
-  await phase('calib_away', 'calibAway');
+  const phase = async name => {
+    if (S.aborted) return;
+    const ev = 'calib_' + name, need = CONFIG.CALIB_SECONDS * 1000;
+    logEv(ev); $('calibText').textContent = t(name === 'look' ? 'calibLook' : 'calibAway');
+    let held = 0, waited = 0, started = false, beeps = -1, last = performance.now(), seen = null;
+    let mode = fresh() ? 'pose' : 'timer';
+    const ys = [], ps = [];
+    recent.length = 0;
+    if (mode === 'timer') logEv(ev + '_timer', 'tracker=' + R.lmState);
+    while (held < need && !S.aborted) {
+      await sleep(100);
+      const now = performance.now(), dt = Math.min(250, now - last); last = now;
+      let ok = true;
+      if (mode !== 'timer') {
+        const p = fresh() ? R.pose : null;
+        if (p && p !== seen) {
+          if (p.face === 1) { recent.push(p); if (recent.length > 5) recent.shift(); } else recent.length = 0;
+        }
+        ok = !!p && tests[name](p, mode === 'relaxed');
+        if (ok && p !== seen && p.face === 1) { ys.push(p.yaw); ps.push(p.pitch); }
+        seen = p;
+        if (!ok) {
+          waited += dt;
+          if (waited >= CONFIG.CALIB_MAX_WAIT_MS) { mode = 'timer'; ok = true; logEv(ev + '_timer', 'timeout'); }
+          else if (mode === 'pose' && waited >= CONFIG.CALIB_RELAX_MS) { mode = 'relaxed'; logEv(ev + '_relaxed'); }
+        }
+      }
+      if (ok) {
+        if (!started) { started = true; logEv(ev + '_hold'); }
+        held += dt;
+      }
+      $('calibHint').textContent = mode === 'timer' ? '' : t(ok ? 'calibHold' : (name === 'look' ? 'calibLookHint' : 'calibAwayHint'));
+      hud(t('calibHud'), pad(Math.max(0, Math.ceil((need - held) / 1000))), Math.min(100, 100 * held / need));
+      const sec = Math.floor(held / 1000);
+      if (ok && sec !== beeps && held < need) { beeps = sec; sweep(800, 800, .05, 0, .06, 'sine'); }
+    }
+    if (S.aborted) return;
+    const my = median(ys), mp = median(ps);
+    if (name === 'look' && my != null) ref = { yaw: my, pitch: mp };
+    if (name === 'look' && R.pose && R.pose.cx != null) R.gazeRef = { cx: R.pose.cx, cy: R.pose.cy };   // where the face is when looking at the robot
+    logEv(ev + '_done', 'mode=' + mode + ';wait_ms=' + Math.round(waited) + ';n=' + ys.length + (my != null ? ';yaw=' + r2(my) + ';pitch=' + r2(mp) : ''));
+  };
+  await phase('look');
+  await phase('away');
+  $('calibHint').textContent = '';
   if (!S.aborted) logEv('calib_end');
 }
 
 function blockIntro(key) {
   return waitFor(res => {
     show('s-blockintro');
-    $('biKicker').textContent = t('block' + key); $('biTitle').textContent = t('title' + key); $('biText').textContent = t('text' + key);
+    $('biKicker').textContent = t('block' + key); $('biTitle').textContent = t('title' + key); $('biText').textContent = t('text' + key, { n: S.name }); renderExamples($('biEx'), key);
     $('btnBlockStart').onclick = () => res();
   });
 }
@@ -951,54 +1345,102 @@ function rate(key) {
   });
 }
 
+// The three optional trait answers are written to the events file once, when the data is sent.
+function logTraits() {
+  if (S.traitsLogged || S.recovered) return;
+  const ks = Object.keys(S.traits); if (!ks.length) return;
+  S.traitsLogged = true;
+  logEv('traits', ks.map(k => k + '=' + S.traits[k]).join(';'));
+}
+
+function resetBlock(key) {
+  S.block = key; S.replies = 0; S.busy = false; S.ask = null; S.checkedIn = false;
+  show('s-block'); robotIdle(); $('breakBanner').hidden = true; $('heard').textContent = '';
+}
+// Two practice exchanges before block A, between warmup_start and warmup_end in the events file.
+async function warmup() {
+  if (S.aborted || !CONFIG.WARMUP) return;
+  resetBlock('W'); S.warmStep = 0;
+  hud(t('warmHud'), '', 0);
+  logEv('warmup_start');
+  renderBlock();
+  const giveUp = setTimeout(() => { logEv('warmup_timeout'); S.blockResolve && S.blockResolve(); }, CONFIG.WARMUP_MAX_MS);
+  await new Promise(res => { S.blockResolve = res; S.cancel = res; });
+  clearTimeout(giveUp);
+  closeFeedback('none');
+  try { speechSynthesis.cancel(); } catch (e) {}
+  if (!S.aborted) logEv('warmup_end');
+}
+
 async function runBlock(key) {
   await blockIntro(key);
   if (S.aborted) return;
-  S.block = key; S.blockReplies = 0; S.busy = false;
-  show('s-block'); setRing('idle'); setFace('neutral', 0, 0); caption(t('stIdle'), true);
-  $('nudge').hidden = true; $('breakBanner').hidden = true;
+  resetBlock(key);
   const dur = CONFIG.BLOCK_SECONDS[key] * 1000, start = performance.now();
+  S.blockEnd = start + dur;
   logEv('block_start', key);
-  newPuzzle();
-  setCard(nextCard());
-  S.sched = [];
+  if (curCase()) logEv('case_start', curCase().id);
+  renderBlock();
+  S.sched = [{ at: 1200, fn: () => robotAsk('checkin', key) }, { at: .86 * dur, fn: () => robotAsk('checkout', key) }];
+  [.45, .68].forEach(f => S.sched.push({ at: f * dur, fn: () => robotAsk('offer', key) }));
   if (key === 'B') {
     [[.2, 'br1'], [.5, 'br2'], [.78, 'br3']].forEach(([f, id]) => S.sched.push({ at: f * dur, fn: () => {
       const bn = $('breakBanner'); bn.textContent = t(id); bn.hidden = false; chime(); logEv('break_prompt', id);
       setTimeout(() => { bn.hidden = true; logEv('break_end', id); }, CONFIG.BREAK_SECONDS * 1000);
     } }));
-  } else {
-    S.sched.push({ at: .4 * dur, fn: () => { if (S.blockReplies === 0 && !S.busy) { $('nudge').hidden = false; logEv('nudge', key); } } });
   }
   const tick = () => {
     const el = performance.now() - start;
-    hud(t('block' + key) + ' · ' + t('title' + key), pad(Math.max(0, Math.ceil((dur - el) / 1000))), Math.min(100, 100 * el / dur));
+    hud(t('block' + key) + ' · ' + t('title' + key), CONFIG.HIDE_CLOCK ? '' : pad(Math.max(0, Math.ceil((dur - el) / 1000))), Math.min(100, 100 * el / dur));
     S.sched.forEach(s => { if (!s.done && el >= s.at) { s.done = true; s.fn(); } });
+    expireAsk();
     if (el >= dur) { clearInterval(S.tickT); S.blockResolve && S.blockResolve(); }
   };
   await new Promise(res => { S.blockResolve = res; S.cancel = res; S.tickT = setInterval(tick, 200); tick(); });
   clearInterval(S.tickT);
+  abortListen(S.aborted ? 'abort' : 'block_end');
+  closeFeedback('none');
   try { speechSynthesis.cancel(); } catch (e) {}
-  S.busy = false; $('breakBanner').hidden = true;
+  S.busy = false; S.ask = null; $('breakBanner').hidden = true;
   if (!S.aborted) { logEv('block_end', key); chime(); }
+  backup();
   if (!S.aborted && CONFIG.BLOCK_RATINGS) await rate(key);
 }
 
 async function mainFlow() {
-  await beginCapture();
+  beginCapture();
   await calibration();
+  await warmup();
   for (const k of ['A', 'B', 'C']) { if (S.aborted) break; await runBlock(k); }
   logEv(S.aborted ? 'session_abort' : 'session_end');
-  await stopCapture();
+  stopCapture();
+  backup();
   showEnd();
 }
-function renderEnd() {
-  $('upInfo').textContent = t(DEMO ? 'upDemo' : (WANT_VIDEO ? 'upInfoVid' : 'upInfoFeat'), { code: S.code });
-  if (R.upload.state === 'idle' && $('btnSend').disabled && !S.recovered) $('upMsg').textContent = t('upRate');
-  $('logOut').value = csvText();
-}
-function showEnd() { clearInterval(S.tickT); show('s-end'); setRing('idle'); renderEnd(); }
 
+/* ---------- End screen: review, send, delete ---------- */
+function renderEnd() {
+  $('upInfo').textContent = t(DEMO ? 'upDemo' : 'upInfo', { code: S.code });
+  if (R.upload.state === 'idle' && $('btnSend').disabled) $('upMsg').textContent = t('upRate');
+  const list = $('review'); list.textContent = '';
+  const said = S.log.filter(e => e.type === 'heard' && !e.detail.endsWith('|'));
+  for (const e of said) {
+    const li = document.createElement('li'), x = document.createElement('button');
+    li.textContent = e.detail.slice(e.detail.indexOf('|') + 1) + ' ';
+    x.type = 'button'; x.className = 'link'; x.textContent = '✕'; x.setAttribute('aria-label', t('btnForget'));
+    x.onclick = () => { forget([e]); };
+    li.appendChild(x); list.appendChild(li);
+  }
+  if (!said.length) { const li = document.createElement('li'); li.textContent = t('reviewNone'); list.appendChild(li); }
+  $('btnDelAll').hidden = !said.length;
+}
+function forget(entries) {
+  for (const e of entries) e.detail = e.detail.slice(0, e.detail.indexOf('|') + 1);
+  backup(); renderEnd();
+}
+function showEnd() {
+  clearInterval(S.tickT); show('s-end'); renderEnd();
+}
 function abortSession() {
   $('confirm').hidden = true;
   S.aborted = true;
@@ -1008,62 +1450,71 @@ function abortSession() {
   if (S.blockResolve) S.blockResolve();
 }
 
-/* ---------- Capture: camera, recording, head-pose features ---------- */
-const MP_VER = '1.2.3';
-const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
-const R = { stream:null, rec:null, chunks:[], seq:0, mime:'', ready:false, recording:false, lm:null, lmState:'idle',
-  feat:[], tick:null, face:null, light:null, blob:null, cv:null, upload:{ state:'idle' }, sent:{}, recover:null };
-const r2 = v => Math.round(v * 100) / 100;
-
-// Head rotation from MediaPipe's 4x4 column-major matrix, order YXZ. Sign convention is unverified:
-// check it in the pilot (turn head left/right, up/down) before interpreting signs. Analysis uses rest-pose deltas.
-function euler(m) {
-  const pitch = Math.asin(Math.max(-1, Math.min(1, -m[9])));
-  const yaw = Math.atan2(m[8], m[10]);
-  const roll = Math.atan2(m[1], m[5]);
-  return [yaw, pitch, roll].map(a => a * 180 / Math.PI);
+// Kept in this browser until sent or deleted, so a closed tab does not lose the session.
+function backup() {
+  if (S.recovered || !S.log.length) return;
+  try { localStorage.setItem(BACKUP_KEY, JSON.stringify({ code: S.code, invite: S.invite, device: DEVICE, events: csvText(), features: featCsv() })); } catch (e) {}
 }
-
-/* IndexedDB backup so a closed tab does not lose the recording */
-const IDB = { db: null };
-const idbReq = q => new Promise(res => { q.onsuccess = () => res(q.result); q.onerror = () => res(null); });
-async function idbOpen() {
-  if (IDB.db) return IDB.db;
+function forgetBackup() { try { localStorage.removeItem(BACKUP_KEY); } catch (e) {} }
+function discardAll() {
+  S.log = []; R.feat = []; S.recovered = null; forgetBackup();
+  R.upload.state = 'done';
+  $('review').textContent = ''; $('btnDelAll').hidden = true; $('dlRow').hidden = true;
+  $('btnSend').hidden = true; $('btnRetry').hidden = true; $('btnDiscard').hidden = true;
+  $('upMsg').textContent = t('discarded');
+}
+async function sendAll() {
+  if (R.upload.state !== 'idle') return;
+  const d = S.recovered || { code: S.code, device: DEVICE, events: csvText(), features: featCsv() };
+  if (!S.recovered) backup();
+  const items = ['events', 'features'].map(k => ({ name: d.code + '_' + d.device + '_' + k + '.csv', blob: new Blob([d[k]], { type: 'text/csv' }) }));
+  const msg = $('upMsg'); msg.className = 'small';
+  $('btnSend').hidden = true; $('btnRetry').hidden = true; $('dlRow').hidden = true;
+  if (DEMO) { showDownloads(items); msg.textContent = t('upDemoMsg'); forgetBackup(); return; }   // the files are offered here; keep no speech text in the browser
+  R.upload.state = 'running';
   try {
-    IDB.db = await new Promise(res => {
-      const q = indexedDB.open('deskrobot', 1);
-      q.onupgradeneeded = () => { q.result.createObjectStore('chunks'); q.result.createObjectStore('meta'); };
-      q.onsuccess = () => res(q.result); q.onerror = () => res(null);
-    });
-  } catch (e) { IDB.db = null; }
-  return IDB.db;
+    for (const it of items) {
+      if (R.sent[it.name]) continue;
+      await uploadBlob(it.blob, it.name, 'text/csv', f => {
+        $('upBar').style.width = Math.round(100 * f) + '%';
+        msg.textContent = t('uploading', { n: it.name, p: Math.round(100 * f) });
+      });
+      R.sent[it.name] = true;
+    }
+    R.upload.state = 'done'; $('upBar').style.width = '100%';
+    msg.textContent = t('upDone', { code: d.code }); msg.className = 'small ok';
+    $('btnDiscard').hidden = true;
+    forgetBackup();
+  } catch (e) {
+    R.upload.state = 'idle';
+    msg.textContent = t('upFail');
+    $('btnRetry').hidden = false; showDownloads(items);
+  }
 }
-async function idbPut(k, v) { try { const db = await idbOpen(); if (db) db.transaction('chunks', 'readwrite').objectStore('chunks').put(v, k); } catch (e) {} }
-async function idbAll() { try { const db = await idbOpen(); return db ? (await idbReq(db.transaction('chunks').objectStore('chunks').getAll())) || [] : []; } catch (e) { return []; } }
-async function idbMetaGet() { try { const db = await idbOpen(); return db ? await idbReq(db.transaction('meta').objectStore('meta').get('m')) : null; } catch (e) { return null; } }
-async function idbMetaSet(v) { try { const db = await idbOpen(); if (db) db.transaction('meta', 'readwrite').objectStore('meta').put(v, 'm'); } catch (e) {} }
-async function idbClear() {
-  try { const db = await idbOpen(); if (!db) return;
-    const tx = db.transaction(['chunks', 'meta'], 'readwrite'); tx.objectStore('chunks').clear(); tx.objectStore('meta').clear();
-    await new Promise(res => { tx.oncomplete = res; tx.onerror = res; });
-  } catch (e) {}
+function recoverCheck() {
+  try { if (localStorage.getItem(BACKUP_KEY)) $('recoverBar').hidden = false; } catch (e) {}
+}
+function recoverSend() {
+  try { S.recovered = JSON.parse(localStorage.getItem(BACKUP_KEY)); } catch (e) {}
+  $('recoverBar').hidden = true;
+  if (!S.recovered) return;
+  S.code = S.recovered.code; S.invite = S.recovered.invite || '';
+  show('s-end'); renderEnd(); $('btnSend').disabled = false; $('upMsg').textContent = '';
 }
 
-/* Camera check */
+/* ---------- Camera and face features (no video or audio is recorded) ---------- */
 async function enableCamera() {
   const msg = $('camMsg'); msg.textContent = '';
+  S.name = curName();
   try {
-    R.stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 }, facingMode: 'user' },
-      audio: WANT_VIDEO
-    });
+    R.stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 }, facingMode: 'user' }, audio: false });
   } catch (e) { msg.textContent = t('camDenied'); return; }
   for (const id of ['camPreview', 'camFeed']) { const v = $(id); v.srcObject = R.stream; v.muted = true; try { await v.play(); } catch (e) {} }
   $('camBox').hidden = false; $('camBtn').hidden = true; R.ready = true;
   clearInterval(R.tick);
   let n = 0;
   R.tick = setInterval(() => { n++; if (R.recording || n % 5 === 0) analyseFrame(); if (n % 5 === 0) analyseLight(); }, 100);
-  updateCheck(); loadLandmarker(); updateStart();
+  loadLandmarker(); sttStart(); updateCheck(); updateStart();
 }
 async function loadLandmarker() {
   if (R.lm || R.lmState === 'loading') return;
@@ -1075,7 +1526,7 @@ async function loadLandmarker() {
       const mod = await import(base + '/vision_bundle.mjs');
       const fs = await mod.FilesetResolver.forVisionTasks(base + '/wasm');
       R.lm = await mod.FaceLandmarker.createFromOptions(fs, {
-        baseOptions: { modelAssetPath: MP_MODEL }, runningMode: 'VIDEO', numFaces: 1, outputFacialTransformationMatrixes: true
+        baseOptions: { modelAssetPath: MP_MODEL }, runningMode: 'VIDEO', numFaces: 1, outputFacialTransformationMatrixes: true, outputFaceBlendshapes: true
       });
       R.lmState = 'ready';
     }
@@ -1093,79 +1544,103 @@ function analyseLight() {
   } catch (e) {}
   updateCheck();
 }
+// Eye direction and mouth opening from MediaPipe blendshapes. Video is not kept, so anything the
+// analysis may need has to be written now. Sign of eye_h is unverified.
+function eyeFeatures(res) {
+  const list = res.faceBlendshapes && res.faceBlendshapes[0] && res.faceBlendshapes[0].categories;
+  if (!list) return ['', '', ''];
+  const b = {}; for (const c of list) b[c.categoryName] = c.score;
+  const v = k => b[k] || 0;
+  return [r2((v('eyeLookOutLeft') + v('eyeLookInRight') - v('eyeLookInLeft') - v('eyeLookOutRight')) / 2),
+    r2((v('eyeLookUpLeft') + v('eyeLookUpRight') - v('eyeLookDownLeft') - v('eyeLookDownRight')) / 2), r2(v('jawOpen'))];
+}
 function analyseFrame() {
   const v = $('camFeed'); if (!R.lm || v.readyState < 2) return;
   let res = null;
   try { res = R.lm.detectForVideo(v, performance.now()); } catch (e) { return; }
   const lms = res && res.faceLandmarks && res.faceLandmarks[0];
   const tms = S.t0 == null ? 0 : Math.round(performance.now() - S.t0);
-  if (!lms) { R.face = null; if (R.recording) R.feat.push([tms, 0, '', '', '', '', '', '']); updateCheck(); return; }
+  if (!lms) { R.face = null; R.pose = { t: performance.now(), face: 0 }; if (R.recording) R.feat.push([tms, 0, '', '', '', '', '', '', '', '', '']); updateCheck(); return; }
   let x0 = 1, x1 = 0, y0 = 1, y1 = 0;
   for (const p of lms) { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; }
   const m = res.facialTransformationMatrixes && res.facialTransformationMatrixes[0];
   const e = m ? euler(m.data) : [NaN, NaN, NaN];
-  R.face = { w: x1 - x0 };
-  if (R.recording) R.feat.push([tms, 1, r2(e[0]), r2(e[1]), r2(e[2]), r2(x1 - x0), r2((x0 + x1) / 2), r2((y0 + y1) / 2)]);
+  R.face = { w: x1 - x0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+  R.pose = m ? { t: performance.now(), face: 1, yaw: e[0], pitch: e[1], cx: R.face.cx, cy: R.face.cy } : null;
+  followFace();
+  if (R.recording) R.feat.push([tms, 1, r2(e[0]), r2(e[1]), r2(e[2]), r2(x1 - x0), r2(R.face.cx), r2(R.face.cy), ...eyeFeatures(res)]);
   updateCheck();
 }
 function updateCheck() {
   if (!$('chkCam')) return;
-  $('chkCam').textContent = (R.ready ? '✓ ' : '• ') + t(R.ready ? 'camOk' : 'camNo');
+  $('chkCam').textContent = R.ready ? '✓ ' + t('camOk') : '';
   $('chkLight').textContent = R.light == null ? '' : ((R.light < 60 ? '• ' : '✓ ') + t(R.light < 60 ? 'camDark' : 'camLightOk'));
-  let f = '';
+  let f = '', good = false;
   if (R.lmState === 'loading') f = '• ' + t('faceLoading');
   else if (R.lmState === 'fail') f = '• ' + t('faceNA');
   else if (R.lmState === 'ready') {
-    if (!R.face) f = '• ' + t('faceNone');
-    else if (R.face.w < 0.18) f = '• ' + t('faceFar');
-    else if (R.face.w > 0.65) f = '• ' + t('faceNear');
-    else f = '✓ ' + t('faceOk');
+    const st = posState();
+    good = st === 'ok';
+    f = good ? '✓ ' + t('faceOk') : '• ' + t({ none: 'faceNone', far: 'faceFar', near: 'faceNear', edge: 'faceEdge' }[st]);
   }
   $('chkFace').textContent = f;
+  $('pv').classList.toggle('good', good);
+  $('chkMode').textContent = !STT.SR ? '• ' + t('sttNone') : R.ready ? '✓ ' + t(STT.local ? 'sttLocal' : 'sttServer') : '';
+  $('chkStt').textContent = !STT.SR || !R.ready ? '' : STT.dead ? '• ' + t('sttFail', { x: STT.dead })
+    : STT.named ? '✓ ' + t('sttName') : '• ' + (STT.seen ? t('sttHeard', { x: STT.seen, n: curName() }) : t('sttWait', { n: curName() }));
 }
 
-/* Recording */
-function pickMime() {
-  const c = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4'];
-  return c.find(x => window.MediaRecorder && MediaRecorder.isTypeSupported(x)) || '';
-}
-async function beginCapture() {
+function beginCapture() {
   S.t0 = performance.now(); S.wall0 = new Date();
   logEv('session_start', S.wall0.toISOString());
-  logEv('mode', MODE);
-  R.recording = true; R.feat = []; R.chunks = []; R.seq = 0; R.blob = null; R.upload = { state: 'idle' }; R.sent = {}; S.recovered = false;
-  if (WANT_VIDEO && R.stream && window.MediaRecorder) {
-    try {
-      await idbClear();
-      R.mime = pickMime();
-      await idbMetaSet({ code: S.code, invite: S.invite, mime: R.mime, t: Date.now() });
-      R.rec = new MediaRecorder(R.stream, Object.assign({ videoBitsPerSecond: CONFIG.VIDEO_BPS, audioBitsPerSecond: 64000 }, R.mime ? { mimeType: R.mime } : {}));
-      R.rec.ondataavailable = e => { if (e.data && e.data.size) { R.chunks.push(e.data); idbPut(R.seq++, e.data); } };
-      R.rec.start(4000);
-      logEv('rec_start', R.mime || 'default');
-    } catch (e) { logEv('rec_error', e && e.message); }
-  }
+  logEv('config', 'device=' + DEVICE + ';screen=' + innerWidth + 'x' + innerHeight + ';stt=' + (STT.local ? 'local' : 'server') + ';name=' + S.name + ';robot_voice=' + (S.voiceOn ? 1 : 0) + ';checkin=' + (CONFIG.GOAL_CHECKIN ? 1 : 0) + ';offers=' + (CONFIG.ROBOT_OFFERS ? 1 : 0));
+  R.recording = true; R.feat = []; R.upload = { state: 'idle' }; R.sent = {}; S.recovered = null;
+  wakeLock();
+  R.posT = setInterval(checkPos, 500);
 }
+// Phones sleep quickly; keep the screen on during the session.
+async function wakeLock() { try { S.wake = await navigator.wakeLock.request('screen'); } catch (e) {} }
 function stopCapture() {
-  return new Promise(res => {
-    R.recording = false;
-    const finish = () => {
-      const type = (R.mime || 'video/webm').split(';')[0];
-      R.blob = R.chunks.length ? new Blob(R.chunks, { type }) : null;
-      clearInterval(R.tick);
-      if (R.stream) R.stream.getTracks().forEach(tr => tr.stop());
-      res();
-    };
-    if (R.rec && R.rec.state !== 'inactive') {
-      R.rec.onstop = finish;
-      try { R.rec.requestData(); R.rec.stop(); } catch (e) { finish(); }
-    } else finish();
-  });
+  R.recording = false;
+  clearInterval(R.tick); clearInterval(R.posT); sttPause();
+  if (R.stream) R.stream.getTracks().forEach(tr => tr.stop());
+  if (S.wake) S.wake.release().catch(() => {});
 }
 function featCsv() {
-  const head = ['# session_code=' + S.code, '# mode=' + MODE, '# euler_order=YXZ (sign convention unverified)', '# rate_hz=10', '# face=0 rows are missing data, not negatives', 't_ms,face,yaw_deg,pitch_deg,roll_deg,bbox_w,cx,cy'];
+  const head = ['# session_code=' + S.code, '# device=' + DEVICE, '# euler_order=YXZ (sign convention unverified)', '# rate_hz=10', '# face=0 rows are missing data, not negatives', 't_ms,face,yaw_deg,pitch_deg,roll_deg,bbox_w,cx,cy,eye_h,eye_v,jaw_open'];
   return head.concat(R.feat.map(r => r.join(','))).join('\n');
 }
+
+
+const MP_VER = '1.2.3';
+const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+const r2 = v => Math.round(v * 100) / 100;
+
+// Head rotation from MediaPipe's 4x4 column-major matrix, order YXZ. Sign convention is unverified:
+// check it in the pilot (turn head left/right, up/down) before interpreting signs. Analysis uses rest-pose deltas.
+function euler(m) {
+  const pitch = Math.asin(Math.max(-1, Math.min(1, -m[9])));
+  const yaw = Math.atan2(m[8], m[10]);
+  const roll = Math.atan2(m[1], m[5]);
+  return [yaw, pitch, roll].map(a => a * 180 / Math.PI);
+}
+
+
+/* ---------- Presence: the robot's eyes follow the face ---------- */
+// Uses only the face position already computed on the device by the face tracker. The reference is
+// where the face was while the participant looked at the robot during calibration.
+const gaze = { dx:0, dy:0, t:0 };
+function followFace() {
+  if (!CONFIG.GAZE_FOLLOW || !S.stageOn || !R.pose || R.pose.face !== 1 || R.pose.cx == null) return;
+  const now = performance.now(); if (now - gaze.t < 400) return; gaze.t = now;
+  const ref = R.gazeRef || { cx: 0.5, cy: 0.45 };
+  const ox = R.pose.cx - ref.cx, oy = R.pose.cy - ref.cy;
+  // The camera image is not mirrored: a face on the left of the image is on the right of the screen as the person sees it.
+  gaze.dx = ox < -0.07 ? 1 : (ox > 0.07 ? -1 : 0);
+  gaze.dy = oy < -0.07 ? -1 : (oy > 0.07 ? 1 : 0);
+  if (!S.busy && face.emo === 'neutral' && (face.dx !== gaze.dx || face.dy !== gaze.dy)) setFace('neutral', gaze.dx, gaze.dy);
+}
+
 
 /* Upload through the Apps Script relay (chunks are base64 in a text/plain POST, so no CORS preflight) */
 async function api(body) {
@@ -1204,119 +1679,104 @@ function showDownloads(items) {
   });
   row.hidden = false;
 }
-async function sendAll() {
-  if (R.upload.state === 'running') return;
-  const mime = (R.mime || 'video/webm').split(';')[0], ext = mime.includes('mp4') ? 'mp4' : 'webm';
-  const items = [];
-  if (!S.recovered) {
-    items.push({ name: S.code + '_events.csv', mime: 'text/csv', blob: new Blob([csvText()], { type: 'text/csv' }) });
-    items.push({ name: S.code + '_features.csv', mime: 'text/csv', blob: new Blob([featCsv()], { type: 'text/csv' }) });
-  }
-  if (WANT_VIDEO && R.blob && R.blob.size) items.push({ name: S.code + '_video.' + ext, mime, blob: R.blob });
-  if (!items.length) { $('upMsg').textContent = t('upNone'); return; }
-  const msg = $('upMsg'); msg.className = 'small';
-  $('btnSend').hidden = true; $('btnRetry').hidden = true; $('dlRow').hidden = true;
-  if (DEMO) { showDownloads(items); msg.textContent = t('upDemoMsg'); return; }
-  R.upload.state = 'running';
-  try {
-    for (const it of items) {
-      if (R.sent[it.name]) continue;
-      await uploadBlob(it.blob, it.name, it.mime, f => {
-        $('upBar').style.width = Math.round(100 * f) + '%';
-        msg.textContent = t('uploading', { n: it.name.replace(S.code + '_', ''), p: Math.round(100 * f) });
-      });
-      R.sent[it.name] = true;
-    }
-    R.upload.state = 'done'; $('upBar').style.width = '100%';
-    msg.textContent = t('upDone', { code: S.code }); msg.className = 'small ok';
-    await idbClear();
-  } catch (e) {
-    R.upload.state = 'idle';
-    msg.textContent = t('upFail');
-    $('btnRetry').hidden = false; showDownloads(items);
-  }
+
+/* ---------- Placement drawing ---------- */
+// 3/4 view of a person at a desk, right way (camera at eye height, view cone covers head and
+// shoulders) and wrong way (camera low, cone only reaches the chin). No text, so captions stay in
+// the page's three languages; colours are the page's theme variables, so it follows dark mode.
+function guideSvg(ok, phone) {
+  const h = ok ? { x: 62, y: 72 } : { x: 74, y: 86 };   // head: upright, or hunched forward
+  const cam = phone ? (ok ? [197, 68] : [190, 111]) : (ok ? [181, 66] : [207, 101]);
+  const cone = ok ? [[44, h.y - 30], [44, h.y + 42]] : [[56, h.y + 6], [56, h.y + 28]];
+  const device = phone
+    ? (ok ? '<path d="M194 118 H206 M200 118 V92" stroke="var(--muted)"/><rect x="193" y="60" width="14" height="32" rx="3" fill="var(--surface)"/>'
+          : '<path d="M176 116 L208 116 L212 111 L180 111 Z" fill="var(--surface)"/>')
+    : (ok ? '<path d="M168 112 L220 112 L214 118 L162 118 Z M172 106 L224 106 L218 112 L166 112 Z" fill="var(--line)" stroke="var(--muted)"/>'
+            + '<path d="M172 106 L216 106 L222 100 L178 100 Z" fill="var(--surface)"/><path d="M178 100 L182 58 L191 58 L187 100 Z" fill="var(--surface)"/>'
+          : '<path d="M168 118 L214 118 L220 112 L174 112 Z" fill="var(--surface)"/><path d="M180 112 L208 96 L214 100 L186 114 Z" fill="var(--surface)"/>');
+  return '<svg viewBox="0 0 280 200" aria-hidden="true" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">'
+    + '<rect x="1.5" y="1.5" width="277" height="197" rx="16" stroke="var(--line)" stroke-width="1.5"/>'
+    + '<ellipse cx="146" cy="184" rx="122" ry="11" fill="var(--line)" stroke="none" opacity=".7"/>'
+    + '<path d="M34 138 H80 M34 138 L30 96 M40 138 V180 M76 138 V180" stroke="var(--muted)"/>'   // chair
+    + '<circle cx="' + h.x + '" cy="' + h.y + '" r="13" fill="var(--surface)"/>'
+    + '<circle cx="' + (h.x + 4) + '" cy="' + (h.y - 2) + '" r="1.7" fill="var(--ink)" stroke="none"/><circle cx="' + (h.x + 9) + '" cy="' + (h.y - 2) + '" r="1.7" fill="var(--ink)" stroke="none"/>'
+    + (ok ? '<path d="M60 86 C58 100 56 116 56 132 M60 98 L80 112 L100 116"/>' : '<path d="M70 99 C63 109 58 120 56 132 M68 104 L86 114 L104 117"/>')   // torso, arm
+    + '<path d="M56 132 L86 134 L88 178"/>'   // thigh, lower leg
+    + '<path d="M108 118 L264 118 L244 136 L88 136 Z" fill="var(--surface)" stroke="var(--muted)"/>'   // desk top
+    + '<path d="M88 136 V141 H244 L264 123 V118 M244 136 V141" stroke="var(--muted)"/><path d="M96 141 V182 M236 141 V182 M258 128 V170" stroke="var(--muted)"/>'
+    + device
+    + '<circle cx="' + cam[0] + '" cy="' + cam[1] + '" r="2.2" fill="var(--ink)" stroke="none"/>'
+    + '<path d="M' + cam + ' L' + cone[0] + ' L' + cone[1] + ' Z" fill="var(' + (ok ? '--accent' : '--warn') + ')" stroke="none" opacity=".28"/>'
+    + (ok ? '<path d="M76 152 H180 M76 147 V157 M180 147 V157" stroke="var(--muted)" stroke-width="1.8" stroke-dasharray="3 4"/>' : '')
+    + '<circle cx="254" cy="26" r="13" fill="var(' + (ok ? '--accent' : '--warn') + ')" stroke="none"/>'
+    + (ok ? '<path d="M248 26 l4 4 l8 -8" stroke="var(--bg)" stroke-width="3"/>' : '<path d="M249 21 l10 10 M259 21 l-10 10" stroke="var(--bg)" stroke-width="3"/>')
+    + '</svg>';
 }
-async function recoverCheck() {
-  try {
-    const meta = await idbMetaGet(); const ch = await idbAll();
-    if (meta && ch.length) { R.recover = { meta, ch }; $('recoverBar').hidden = false; }
-  } catch (e) {}
-}
-function recoverSend() {
-  const { meta, ch } = R.recover;
-  S.code = meta.code; S.invite = meta.invite || ''; R.mime = meta.mime || '';
-  R.blob = new Blob(ch, { type: (R.mime || 'video/webm').split(';')[0] });
-  S.recovered = true; $('recoverBar').hidden = true;
-  show('s-end'); renderEnd(); $('btnSend').disabled = false; $('upMsg').textContent = '';
+function drawGuide() {
+  $('guideGood').innerHTML = guideSvg(true, DEVICE === 'phone');
+  $('guideBad').innerHTML = guideSvg(false, DEVICE === 'phone');
 }
 
 /* ---------- Wiring ---------- */
 function updateStart() {
   const all = [...document.querySelectorAll('.chk')].every(c => c.checked) && $('consentChk').checked;
-  const lmOk = MODE !== 'features' || R.lmState === 'ready';
-  const inviteOk = DEMO || (S.invite && S.invite.length >= 4);
-  $('btnStart').disabled = !(all && R.ready && lmOk && inviteOk);
+  const inviteOk = DEMO || S.invite.length >= 4;
+  $('btnStart').disabled = !(all && R.ready && R.lmState === 'ready' && STT.SR && !STT.dead && inviteOk);
 }
 function init() {
   const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   S.code = Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
-  buildEyes(); setFace('neutral', 0, 0); idleLoop();
-  document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => { S.lang = b.dataset.lang; S.voiceTouched = false; applyLang(); }));
+  buildEyes(); setFace('neutral', 0, 0); idleLoop(); drawGuide();
+  $('chkDevice').dataset.i = DEVICE === 'phone' ? 'chkPhone' : 'chkLaptop';
+  document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => {
+    S.lang = b.dataset.lang; S.voiceTouched = false;
+    if (STT.want) { sttPause(); STT.named = false; STT.seen = ''; sttStart(); }
+    applyLang();
+  }));
   if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = refreshVoice;
   $('btnToSetup').onclick = () => show('s-setup');
   document.querySelectorAll('.chk').forEach(c => c.addEventListener('change', updateStart));
   $('consentChk').addEventListener('change', updateStart);
   $('voiceChk').addEventListener('change', () => { S.voiceTouched = true; });
+  $('robotName').addEventListener('input', () => { STT.named = false; updateCheck(); });
   $('btnStart').onclick = () => {
-    S.name = $('robotName').value.trim() || 'Buddy';
+    S.name = curName();
     S.voiceOn = $('voiceChk').checked && S.voiceOk;
     ac(); mainFlow();
   };
-  $('btnAsk').addEventListener('click', e => { e.currentTarget.blur(); askRobot(); });
-  $('btnSkip').addEventListener('click', e => { e.currentTarget.blur(); skipCard(); });
-  $('pzCheck').onclick = checkPuzzle;
-  $('pzSkip').onclick = () => { logEv('puzzle_skip', S.pz ? S.pz.type : ''); newPuzzle(); };
-  $('pzIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); checkPuzzle(); } });
   $('btnAbort').onclick = () => { $('confirm').hidden = false; $('abortNo').focus(); };
   $('abortNo').onclick = () => { $('confirm').hidden = true; };
   $('abortYes').onclick = abortSession;
-  document.addEventListener('keydown', e => {
-    if (S.screen !== 's-block' || !$('confirm').hidden) return;
-    const tag = (e.target.tagName || '').toLowerCase();
-    if (tag === 'input' || tag === 'textarea') return;
-    if (e.code === 'Space') { if (tag === 'button' && e.target.id !== 'btnAsk' && e.target.id !== 'btnSkip') return; e.preventDefault(); askRobot(); }
-    else if (e.key === 's' || e.key === 'S') { skipCard(); }
-  });
   $('enjoyBtns').onclick = e => {
     const x = e.target.closest('button'); if (!x) return;
-    S.enjoy = x.dataset.v;
     $('enjoyBtns').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === x)));
-    logEv('enjoyment', S.enjoy);
-    if (R.upload.state !== 'running' && R.upload.state !== 'done') { $('btnSend').disabled = false; if (!$('upMsg').className.includes('ok')) $('upMsg').textContent = ''; }
+    logEv('enjoyment', x.dataset.v);
+    if (R.upload.state === 'idle') { $('btnSend').disabled = false; $('upMsg').textContent = ''; }
   };
-  $('btnCopy').onclick = async () => {
-    const txt = csvText(), msg = $('copyMsg');
-    try { await navigator.clipboard.writeText(txt); msg.textContent = t('copied'); return; } catch (e) {}
-    try { $('logOut').select(); if (document.execCommand('copy')) { msg.textContent = t('copied'); return; } } catch (e) {}
-    msg.textContent = t('copyFail');
-  };
-  $('btnDl').onclick = () => {
-    try {
-      const u = URL.createObjectURL(new Blob([csvText()], { type: 'text/csv' }));
-      const a = document.createElement('a'); a.href = u; a.download = 'sesi-' + S.code + '.csv';
-      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 2000);
-    } catch (e) {}
-    $('copyMsg').textContent = t('copyFail');
-  };
-  S.invite = '';
   $('inviteWrap').hidden = DEMO;
   $('camBtn').onclick = enableCamera;
   $('inviteIn').addEventListener('input', () => { S.invite = $('inviteIn').value.trim(); updateStart(); });
-  $('btnSend').onclick = sendAll;
+  $('btnSend').onclick = () => { logTraits(); sendAll(); };
   $('btnRetry').onclick = sendAll;
+  $('btnDiscard').onclick = discardAll;
+  $('btnDelAll').onclick = () => forget(S.log.filter(e => e.type === 'heard'));
+  $('traitCard').addEventListener('click', e => {
+    const b = e.target.closest('button[data-v]'), q = e.target.closest('[data-q]'); if (!b || !q) return;
+    S.traits[q.dataset.q] = b.dataset.v;
+    q.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  });
   $('btnRecover').onclick = recoverSend;
+  $('btnForget').onclick = () => { forgetBackup(); $('recoverBar').hidden = true; };
   window.addEventListener('beforeunload', e => { if (R.upload.state === 'running' || R.recording) { e.preventDefault(); e.returnValue = ''; } });
-  document.addEventListener('visibilitychange', () => { if (R.recording) logEv(document.hidden ? 'tab_hidden' : 'tab_visible'); });
+  window.addEventListener('pagehide', backup);
+  document.addEventListener('visibilitychange', () => {
+    if (!R.recording) return;
+    logEv(document.hidden ? 'tab_hidden' : 'tab_visible');
+    if (document.hidden) backup(); else wakeLock();
+  });
+  // Start language: ?lang=id|en|ru wins; otherwise Russian for a Russian browser, else Indonesian.
+  if (LI[QS.get('lang')] !== undefined) S.lang = QS.get('lang');
+  else if ((navigator.language || '').toLowerCase().startsWith('ru')) S.lang = 'ru';
   applyLang();
   show('s-intro');
   recoverCheck();

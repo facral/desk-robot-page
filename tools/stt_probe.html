@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uji pengenalan ucapan di perangkat</title>
+<style>
+  body{font:16px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif;max-width:760px;margin:0 auto;padding:20px 16px 60px;background:#f6f7f6;color:#17201d}
+  @media (prefers-color-scheme:dark){body{background:#0f1514;color:#e6eeea} pre,button{background:#172120;color:#e6eeea;border-color:#263330}}
+  h1{font-size:24px;margin:0 0 6px} p{margin:0 0 12px}
+  button{font:600 15px system-ui;padding:10px 16px;border-radius:10px;border:1.5px solid #c9d2ce;background:#fff;cursor:pointer;margin:4px 6px 4px 0}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  pre{background:#fff;border:1px solid #c9d2ce;border-radius:10px;padding:12px;white-space:pre-wrap;word-break:break-word;min-height:160px;font:13.5px/1.5 ui-monospace,monospace}
+  .note{font-size:14px;opacity:.8}
+</style>
+</head>
+<body>
+<h1>Uji pengenalan ucapan di perangkat</h1>
+<p>Halaman ini mengecek apakah browser ini bisa mengubah ucapan bahasa Indonesia menjadi teks <strong>tanpa mengirim suara ke server</strong>. Tombol 3 hanya berjalan jika pengenalan lokal tersedia; halaman ini tidak pernah memakai pengenalan lewat server.</p>
+<p class="note">Jalankan di Chrome atau Edge terbaru, lewat alamat localhost atau https. Kerjakan tombol 1, lalu 2 jika diminta, lalu 3. Setelah selesai, tekan Salin hasil dan tempel ke Claude.</p>
+<p>
+  <button id="b1">1. Cek dukungan</button>
+  <button id="b2">2. Pasang paket bahasa Indonesia</button>
+  <button id="b3">3. Uji bicara 8 detik</button>
+  <button id="bc">Salin hasil</button>
+</p>
+<pre id="out" aria-live="polite"></pre>
+<script>
+(() => {
+  'use strict';
+  const out = document.getElementById('out');
+  const log = s => { out.textContent += s + '\n'; };
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const LANGS = ['id-ID', 'en-US'];
+  let localOk = false;
+
+  log('Browser: ' + navigator.userAgent);
+  log('Konteks aman (https atau localhost): ' + window.isSecureContext);
+
+  async function availability(lang) {
+    if (!SR || typeof SR.available !== 'function') return 'tidak ada fungsi available()';
+    try { return await SR.available({ langs: [lang], processLocally: true }); }
+    catch (e) { return 'galat: ' + (e && e.name) + ' ' + (e && e.message); }
+  }
+
+  document.getElementById('b1').onclick = async () => {
+    log('\n--- 1. Cek dukungan ---');
+    log('SpeechRecognition ada: ' + !!SR + (SR && !window.SpeechRecognition ? ' (versi webkit)' : ''));
+    if (!SR) { log('Kesimpulan: browser ini tidak punya pengenalan ucapan sama sekali.'); return; }
+    log('Fungsi available(): ' + (typeof SR.available) + ', install(): ' + (typeof SR.install));
+    let probe = null;
+    try { probe = new SR(); } catch (e) { log('Tidak bisa membuat SpeechRecognition: ' + e.message); }
+    log('Properti processLocally: ' + (probe ? ('processLocally' in probe) : 'tidak diketahui'));
+    for (const l of LANGS) {
+      const a = await availability(l);
+      log('Pengenalan lokal untuk ' + l + ': ' + a);
+      if (l === 'id-ID') localOk = a === 'available';
+    }
+    log(localOk ? 'Kesimpulan: bahasa Indonesia siap dipakai secara lokal. Lanjut ke tombol 3.'
+                : 'Kesimpulan: bahasa Indonesia belum siap secara lokal. Coba tombol 2, lalu ulangi tombol 1.');
+  };
+
+  document.getElementById('b2').onclick = async () => {
+    log('\n--- 2. Pasang paket bahasa Indonesia ---');
+    if (!SR || typeof SR.install !== 'function') { log('Fungsi install() tidak ada di browser ini.'); return; }
+    log('Meminta browser mengunduh paket bahasa (bisa puluhan MB, tunggu sampai ada hasil)...');
+    try {
+      const ok = await SR.install({ langs: ['id-ID'], processLocally: true });
+      log('Hasil install(): ' + ok);
+    } catch (e) { log('Galat install(): ' + (e && e.name) + ' ' + (e && e.message)); }
+    const a = await availability('id-ID');
+    log('Status sekarang untuk id-ID: ' + a);
+    localOk = a === 'available';
+  };
+
+  document.getElementById('b3').onclick = async () => {
+    log('\n--- 3. Uji bicara 8 detik (hanya lokal) ---');
+    if (!SR) { log('Tidak ada SpeechRecognition.'); return; }
+    const a = await availability('id-ID');
+    if (a !== 'available') { log('Dibatalkan: pengenalan lokal id-ID berstatus "' + a + '". Uji ini tidak akan memakai server.'); return; }
+    const r = new SR();
+    r.lang = 'id-ID'; r.continuous = true; r.interimResults = true;
+    try { r.processLocally = true; } catch (e) {}
+    if (r.processLocally !== true) { log('Dibatalkan: browser tidak menerima processLocally = true.'); return; }
+    const t0 = performance.now(); let firstAt = null, finalText = '';
+    r.onstart = () => log('Mulai. Ucapkan beberapa kalimat, misalnya: "Buddy, tolong beri aku petunjuk" lalu "jam berapa sekarang".');
+    r.onresult = e => {
+      if (firstAt == null) firstAt = Math.round(performance.now() - t0);
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        if (res.isFinal) { finalText += res[0].transcript + ' | '; log('  teks (' + Math.round(performance.now() - t0) + ' ms, keyakinan ' + (res[0].confidence || 0).toFixed(2) + '): ' + res[0].transcript); }
+      }
+    };
+    r.onerror = e => log('Galat pengenalan: ' + e.error + (e.message ? ' ' + e.message : ''));
+    r.onend = () => {
+      log('Selesai. Teks pertama muncul setelah: ' + (firstAt == null ? 'tidak ada teks' : firstAt + ' ms'));
+      log('Semua teks: ' + (finalText || '(kosong)'));
+    };
+    try { r.start(); } catch (e) { log('Tidak bisa mulai: ' + e.message); return; }
+    setTimeout(() => { try { r.stop(); } catch (e) {} }, 8000);
+  };
+
+  document.getElementById('bc').onclick = async () => {
+    try { await navigator.clipboard.writeText(out.textContent); log('\n(Tersalin.)'); }
+    catch (e) { log('\n(Tidak bisa menyalin otomatis. Blok teks di atas lalu salin manual.)'); }
+  };
+})();
+</script>
+</body>
+</html>

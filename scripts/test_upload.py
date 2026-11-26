@@ -4,14 +4,14 @@
 No camera and no browser needed. Standard library only.
 
 Examples
-  python scripts/test_upload.py --endpoint https://script.google.com/macros/s/XXX/exec --invite AB12CD --size-mb 120
+  python scripts/test_upload.py --endpoint https://script.google.com/macros/s/XXX/exec --invite AB12CD --size-mb 15
   python scripts/test_upload.py ... --size-mb 20 --fail-at 2         simulated network error before chunk 2
   python scripts/test_upload.py ... --size-mb 20 --lose-reply-at 2   chunk 2 is stored but its reply is "lost"
   python scripts/test_upload.py ... --negative                       bad requests must be rejected (uses no quota)
 
 Endpoint and invite can also come from the environment: DESK_ENDPOINT, DESK_INVITE.
 Each upload consumes one of the invite's MAX_USES (default 12), so use a dedicated test invite.
-The uploaded file is random bytes named TEST_<id>_video.webm. Delete it from Drive afterwards.
+The uploaded file is random bytes named TEST_<id>_laptop_events.csv. Delete it from Drive afterwards.
 """
 import argparse
 import base64
@@ -69,8 +69,7 @@ def md5_of_stream(block, size):
 
 
 def upload(relay, invite, size, mime, fail_at, lose_at):
-    ext = "mp4" if "mp4" in mime else ("csv" if "csv" in mime else "webm")
-    name = "TEST_%s_video.%s" % (uuid.uuid4().hex[:8], ext)
+    name = "TEST_%s_laptop_events.csv" % uuid.uuid4().hex[:8]
     block = os.urandom(CHUNK)
     md5 = md5_of_stream(block, size)
     n_chunks = -(-size // CHUNK)
@@ -138,10 +137,10 @@ def upload(relay, invite, size, mime, fail_at, lose_at):
 
 def negative(relay, invite):
     """Requests the relay must refuse. None of them reaches the per-invite use counter."""
-    good = {"action": "init", "invite": invite, "name": "TEST_neg_video.webm", "mime": "video/webm", "size": 1000}
+    good = {"action": "init", "invite": invite, "name": "TEST_neg_laptop_events.csv", "mime": "text/csv", "size": 1000}
     cases = [
         ("wrong invite", dict(good, invite="not-a-real-invite"), "invite"),
-        ("bad file name", dict(good, name="../evil name.webm"), "name"),
+        ("bad file name", dict(good, name="../evil name.csv"), "name"),
         ("bad mime", dict(good, mime="application/zip"), "mime"),
         ("size zero", dict(good, size=0), "size"),
         ("size too large", dict(good, size=10 ** 12), "size"),
@@ -175,7 +174,6 @@ def main():
     ap.add_argument("--endpoint", default=os.environ.get("DESK_ENDPOINT", ""), help="web app URL ending in /exec")
     ap.add_argument("--invite", default=os.environ.get("DESK_INVITE", ""), help="a valid invite code (use a test one)")
     ap.add_argument("--size-mb", type=float, default=5, help="dummy file size in MB (default 5)")
-    ap.add_argument("--mime", default="video/webm", choices=["video/webm", "video/mp4", "text/csv"])
     ap.add_argument("--fail-at", type=int, default=None, metavar="N", help="simulate a network error before chunk N (0-based)")
     ap.add_argument("--lose-reply-at", type=int, default=None, metavar="N", help="send chunk N but ignore its reply")
     ap.add_argument("--negative", action="store_true", help="only run the rejection checks")
@@ -188,7 +186,7 @@ def main():
         ok = negative(relay, a.invite)
     else:
         size = max(1, int(a.size_mb * 1024 * 1024))
-        ok = upload(relay, a.invite, size, a.mime, a.fail_at, a.lose_reply_at)
+        ok = upload(relay, a.invite, size, "text/csv", a.fail_at, a.lose_reply_at)
     sys.exit(0 if ok else 1)
 
 

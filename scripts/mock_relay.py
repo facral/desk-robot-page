@@ -16,9 +16,9 @@ import re
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-ALLOWED_MIME = ['video/webm', 'video/mp4', 'text/csv']
+ALLOWED_MIME = ['text/csv']
 NAME_RE = re.compile(r'^[A-Za-z0-9_.-]{1,80}$')
-CFG = {'invites': [], 'max_bytes': 400000000, 'max_uses': 12}
+CFG = {'invites': [], 'max_bytes': 20000000, 'max_uses': 12}
 USES, SESS, PENDING = {}, {}, {}
 
 

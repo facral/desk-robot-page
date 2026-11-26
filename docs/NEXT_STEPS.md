@@ -5,6 +5,16 @@ Tags: **[you]** needs your account, device, or a decision. **[claude]** can be d
 Status 2026-11-16: files copied from Downloads into this folder, git initialised, nothing committed.
 Smoke test: the page opens in demo mode with no console errors. Cross-check of `index.html` vs `Code.gs` found no mismatches (see CLAUDE.md).
 
+Status 2026-11-17: first real session (code 9S5UFP) analysed. Recording pipeline is sound (steady 10 Hz, no gaps). Two weaknesses found: calibration phases were reached late, and head pose alone barely separated "talking to the robot" from other moments. Page version 3 answers the first with pose-gated calibration and makes the robot less dull (see README, "Page version 3"). Open decisions for the owner: whether to add eye-direction columns to the features file, and whether the robot should use speech recognition (this sends live audio to the browser vendor's speech service and needs a consent text change).
+
+Status 2026-11-17, later: page version 4 built locally, not committed and not published. It follows `docs/ENGAGEMENT_ANALYSIS.md`: goals instead of scripted sentences, robot-only hints and swaps, local voice sensing, warm-up, robot offers, three trait questions. Of the blockers in `docs/BETA_TEST_REPORT.md` only B1 (Space in the answer box) is fixed; B2 (invite check before start), B3 (sleep and hidden tab), B4 (robot too close to the puzzle) and B5 (discard after abort) are still open. Next for the owner: try version 4 with a real microphone, then decide on publishing.
+
+Status 2026-11-17, version 5: built locally, not committed and not published. Trivia goals are replaced by a work companion (goal check-in and check-out, listener mode with nods, speaking practice), the robot's eyes follow the face, a 1-second minimum of voice is required, and the whole page exists in Indonesian, English and Russian. See README, "Page version 5", and `docs/ENGAGEMENT_ROUND2.md`. Open for the owner: run `tools/stt_probe.html` in Chrome and Edge; have a native speaker read the Russian text; try version 5 with a real microphone; decide where the robot sits (blocker B4). Blockers B2, B3 and B5 from the beta report are still open.
+
+Status 2026-11-26, version 6: built locally, not committed and not published. No video or audio; speech is transcribed by the browser and the robot answers when called by name; feedback buttons after each answer; mini-detective case replaces word puzzles; privacy, do and don't on the first screen; placement drawing and face outline; phone and laptop data kept apart by file name. Relay accepts CSV only and refuses uploads without its sheet. See README. Open for the owner: run `tools/stt_probe.html` on a laptop and a phone; try a session with a real microphone in each language; update the consent text and ask ITMO about the speech service.
+
+Status 2026-11-26, version 7: owner feedback on version 6 applied, locally and uncommitted. Number puzzles replaced by six detective cases across parts 1 and 2; example sentences on every part; spoken correction ("wrong, it should be ...") instead of rating buttons; the robot waits 1.3 s of silence and joins pieces before answering; all recogniser guesses are tried and the heard text is shown; position warnings. Placement drawing redone in the chosen isometric 3/4 style: two Superdesign generations missed the camera direction, so it is hand-drawn as inline SVG and imported to the Superdesign canvas for review.
+
 ## 1. Baseline **[you]** (2 min)
 ```
 cd D:\@Tesis\Claude\desk-robot-page
@@ -14,12 +24,12 @@ git commit -m "import session page v2"
 
 ## 2. Deploy the Apps Script relay **[you]** (15 min, from README)
 1. Private Drive folder, shared only with you and your teammate. Copy the folder id.
-2. script.google.com > new project > paste `apps-script/Code.gs`.
+2. Create a Google Sheet, then Extensions > Apps Script, paste `apps-script/Code.gs`. Not at script.google.com: the relay refuses uploads without its sheet.
 3. Project Settings > Script properties: `FOLDER_ID`, `INVITES` (e.g. `AB12CD,EF34GH`). Optional `MAX_BYTES`, `MAX_USES`.
 4. Deploy > Web app: Execute as **Me**, access **Anyone**. Approve Drive permission. Copy the `/exec` URL.
 5. Optional for later automation: `npm i -g @google/clasp`, `clasp login`, then in `apps-script/` run `clasp clone <scriptId>`. After that Claude can `clasp push` edits; a new deployment version is still a click in the editor.
 
-Limits to know: one chunk POST carries about 4 MB of base64 JSON, under Apps Script's 50 MB per request. A 400 MB video is about 134 chunks. The resumable session lives 6 hours in CacheService.
+Limits to know: one chunk POST carries about 4 MB of base64 JSON, under Apps Script's 50 MB per request. A session sends two CSV files well under 3 MB, so one chunk each. The resumable session lives 6 hours in CacheService.
 
 ## 3. Configure and host the page
 1. **[you]** Paste the `/exec` URL into `CONFIG.ENDPOINT` in `index.html`; set `RESEARCHER`, `CONTACT`, `CONSENT_URL` when you have them.
@@ -50,11 +60,11 @@ python scripts/test_upload.py --negative
 python scripts/test_upload.py --size-mb 5
 python scripts/test_upload.py --size-mb 20 --fail-at 2
 python scripts/test_upload.py --size-mb 20 --lose-reply-at 2
-python scripts/test_upload.py --size-mb 120
+python scripts/test_upload.py --size-mb 15
 ```
-Run them in that order; that is 4 uploads, so 4 of the 12 uses. Each run ends with `PASS` or `FAIL` and exit code 0 or 1. After a PASS, open the Drive folder, confirm the `TEST_*_video.webm` file has the printed size, then delete it. `--negative` uploads nothing and uses no quota.
+Run them in that order; that is 4 uploads, so 4 of the 12 uses. Each run ends with `PASS` or `FAIL` and exit code 0 or 1. After a PASS, open the Drive folder, confirm the `TEST_*_laptop_events.csv` file has the printed size, then delete it. `--negative` uploads nothing and uses no quota.
 
-What to expect on the real relay: a few seconds per chunk, so 120 MB (40 chunks) takes minutes, not seconds. If `--negative` reports "reply is not JSON", the web app is not deployed with access = Anyone or the URL is not the `/exec` one.
+What to expect on the real relay: a few seconds per chunk, so 15 MB (5 chunks) takes under a minute, not seconds. If `--negative` reports "reply is not JSON", the web app is not deployed with access = Anyone or the URL is not the `/exec` one.
 
 To rehearse offline: `python scripts/mock_relay.py --invites TEST01`, then use endpoint `http://127.0.0.1:8787/exec` and invite `TEST01`.
 
@@ -76,14 +86,10 @@ This can be done today on your own laptop, in demo mode.
 `check_signs.py` was verified on 2026-11-16 with synthetic CSVs only (correct order, flipped signs, wrong order, too few movements). It has not seen a real recording yet. It reads the numeric CSV only, never video.
 
 ## 5. Ethics and consent **[you]**
-Settle outside this repo: ITMO ethics approval, whether face video on Google Drive is allowed for your participants, deletion date. Then put the consent text at `CONSENT_URL` and set `SEND_TO` if participants may send files manually.
+Settle outside this repo: ITMO ethics approval, whether sending speech to the browser maker's recogniser is acceptable, deletion date. Then put the consent text from the README at `CONSENT_URL`.
 
 ## 6. Pilot **[you]**, then **[claude]**
-Run 2 full sessions (you + teammate) with real invite codes. Check the Drive folder for the three files per code. Remux before analysis:
-```
-ffmpeg -i in.webm -c copy out.webm
-```
-Claude then writes the first analysis script: load `_features.csv` + `_events.csv`, align by `t_ms`, summarise face-present ratio per block.
+Run 2 full sessions (you + teammate) with real invite codes. Check the Drive folder for the two files per session and device. Run `scripts/strip_speech.py` on each events file before sharing it. Claude then writes the first analysis script: load `_features.csv` + `_events.csv`, align by `t_ms`, summarise face-present ratio per block.
 
 ## 7. Recruit
 Hand out invite codes, keep the `uploads` sheet restricted, and watch `MAX_USES`.
@@ -94,4 +100,4 @@ When steps 1-6 pass, this folder becomes `intent-wake/collector/` with history k
 cd D:\@Tesis\Claude\intent-wake
 git subtree add --prefix=collector ../desk-robot-page main
 ```
-Collected CSVs go to `intent-wake/data/raw/` (never video to any LLM), and `scripts/check_signs.py` plus the analysis script move to `intent-wake/scripts/`. Until then, nothing here depends on intent-wake.
+Collected CSVs go to `intent-wake/data/raw/` (events files only after `scripts/strip_speech.py`), and `scripts/check_signs.py` plus the analysis script move to `intent-wake/scripts/`. Until then, nothing here depends on intent-wake.
