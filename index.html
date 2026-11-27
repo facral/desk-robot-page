@@ -455,6 +455,7 @@ sttLocal:['Ucapan diubah jadi teks di perangkatmu.','Speech is turned into text 
 sttServer:['Ucapan dikirim ke pembuat browser untuk diubah jadi teks.','Speech is sent to the browser maker to be turned into text.','Речь отправляется производителю браузера для распознавания.'],
 sttWait:['Sebut "{n}" untuk mengetes mikrofon','Say "{n}" to test the microphone','Скажи «{n}», чтобы проверить микрофон'],
 sttHeard:['Terdengar: {x}. Coba sebut "{n}" lagi.','Heard: {x}. Try saying "{n}" again.','Услышано: {x}. Скажи «{n}» ещё раз.'],
+sttConsent:['Centang persetujuan di bawah untuk mengetes mikrofon','Tick the consent box below to test the microphone','Отметь согласие ниже, чтобы проверить микрофон'],
 sttName:['Nama robot dikenali','The robot\'s name was recognised','Имя робота распознано'],
 sttFail:['Pengenalan ucapan berhenti ({x}). Cek izin mikrofon dan internet.','Speech recognition stopped ({x}). Check microphone permission and internet.','Распознавание остановилось ({x}). Проверь доступ к микрофону и интернет.'],
 consentLabel:['Aku sudah membaca informasi tadi dan setuju ikut.','I have read the information and agree to take part.','Я прочитал(а) информацию и согласен(на) участвовать.'],
@@ -963,12 +964,18 @@ function renderExamples(ul, b) {
 // END_PAUSE_MS without new words, so a short pause inside a sentence does not make the robot answer.
 const STT = { get SR() { return window.__mockSR || window.SpeechRecognition || window.webkitSpeechRecognition; },
   rec:null, want:false, local:false, segT:null, lastT:0, parts:[], pending:false, endT:null, seen:'', named:false, dead:'' };
+// Asking what the browser supports does not open the microphone, so the participant can be told before consenting.
+async function sttDetect() {
+  try { STT.local = typeof STT.SR.available === 'function' && (await STT.SR.available({ langs: [SR_LANG[S.lang]], processLocally: true })) === 'available'; }
+  catch (e) { STT.local = false; }
+  updateCheck();
+}
+// Opens the microphone. Only ever called with the consent box ticked.
 async function sttStart() {
   if (!STT.SR) return;
   STT.want = true; STT.dead = '';
-  try { STT.local = typeof STT.SR.available === 'function' && (await STT.SR.available({ langs: [SR_LANG[S.lang]], processLocally: true })) === 'available'; }
-  catch (e) { STT.local = false; }
-  sttOpen(); updateCheck(); updateStart();
+  await sttDetect();
+  sttOpen(); updateStart();
 }
 function sttOpen() {
   if (!STT.want || STT.rec || STT.dead) return;
@@ -1012,7 +1019,7 @@ function sttPause() {
   STT.want = false; STT.segT = null; STT.parts = []; clearTimeout(STT.endT);
   const r = STT.rec; STT.rec = null; if (r) try { r.abort(); } catch (e) {}
 }
-function sttResume() { STT.want = true; setTimeout(sttOpen, 250); }
+function sttResume() { if (!R.recording) return; STT.want = true; setTimeout(sttOpen, 250); }   // a reply may end after the session did
 function sttBroken(why) {
   updateCheck(); updateStart();
   if (S.stageOn) caption(t('sttFail', { x: why }), false);
@@ -1422,6 +1429,8 @@ async function mainFlow() {
 function renderEnd() {
   $('upInfo').textContent = t(DEMO ? 'upDemo' : 'upInfo', { code: S.code });
   if (R.upload.state === 'idle' && $('btnSend').disabled) $('upMsg').textContent = t('upRate');
+  const gone = R.upload.state !== 'idle' || Object.keys(R.sent).length > 0;   // too late to delete here
+  if (gone) $('btnDiscard').hidden = true;
   const list = $('review'); list.textContent = '';
   const said = S.log.filter(e => e.type === 'heard' && !e.detail.endsWith('|'));
   for (const e of said) {
@@ -1429,10 +1438,11 @@ function renderEnd() {
     li.textContent = e.detail.slice(e.detail.indexOf('|') + 1) + ' ';
     x.type = 'button'; x.className = 'link'; x.textContent = '✕'; x.setAttribute('aria-label', t('btnForget'));
     x.onclick = () => { forget([e]); };
-    li.appendChild(x); list.appendChild(li);
+    if (!gone) li.appendChild(x);
+    list.appendChild(li);
   }
   if (!said.length) { const li = document.createElement('li'); li.textContent = t('reviewNone'); list.appendChild(li); }
-  $('btnDelAll').hidden = !said.length;
+  $('btnDelAll').hidden = gone || !said.length;
 }
 function forget(entries) {
   for (const e of entries) e.detail = e.detail.slice(0, e.detail.indexOf('|') + 1);
@@ -1452,7 +1462,7 @@ function abortSession() {
 
 // Kept in this browser until sent or deleted, so a closed tab does not lose the session.
 function backup() {
-  if (S.recovered || !S.log.length) return;
+  if (S.recovered || !S.log.length || R.upload.state === 'done') return;   // sent or deleted stays gone
   try { localStorage.setItem(BACKUP_KEY, JSON.stringify({ code: S.code, invite: S.invite, device: DEVICE, events: csvText(), features: featCsv() })); } catch (e) {}
 }
 function forgetBackup() { try { localStorage.removeItem(BACKUP_KEY); } catch (e) {} }
@@ -1470,8 +1480,8 @@ async function sendAll() {
   const items = ['events', 'features'].map(k => ({ name: d.code + '_' + d.device + '_' + k + '.csv', blob: new Blob([d[k]], { type: 'text/csv' }) }));
   const msg = $('upMsg'); msg.className = 'small';
   $('btnSend').hidden = true; $('btnRetry').hidden = true; $('dlRow').hidden = true;
-  if (DEMO) { showDownloads(items); msg.textContent = t('upDemoMsg'); forgetBackup(); return; }   // the files are offered here; keep no speech text in the browser
-  R.upload.state = 'running';
+  if (DEMO) { showDownloads(items); msg.textContent = t('upDemoMsg'); R.upload.state = 'done'; forgetBackup(); renderEnd(); return; }   // the files are offered here; keep no speech text in the browser
+  R.upload.state = 'running'; renderEnd();
   try {
     for (const it of items) {
       if (R.sent[it.name]) continue;
@@ -1483,10 +1493,9 @@ async function sendAll() {
     }
     R.upload.state = 'done'; $('upBar').style.width = '100%';
     msg.textContent = t('upDone', { code: d.code }); msg.className = 'small ok';
-    $('btnDiscard').hidden = true;
-    forgetBackup();
+    forgetBackup(); renderEnd();
   } catch (e) {
-    R.upload.state = 'idle';
+    R.upload.state = 'idle'; renderEnd();
     msg.textContent = t('upFail');
     $('btnRetry').hidden = false; showDownloads(items);
   }
@@ -1514,7 +1523,7 @@ async function enableCamera() {
   clearInterval(R.tick);
   let n = 0;
   R.tick = setInterval(() => { n++; if (R.recording || n % 5 === 0) analyseFrame(); if (n % 5 === 0) analyseLight(); }, 100);
-  loadLandmarker(); sttStart(); updateCheck(); updateStart();
+  loadLandmarker(); sttDetect(); if ($('consentChk').checked) sttStart(); updateCheck(); updateStart();
 }
 async function loadLandmarker() {
   if (R.lm || R.lmState === 'loading') return;
@@ -1586,7 +1595,7 @@ function updateCheck() {
   $('chkFace').textContent = f;
   $('pv').classList.toggle('good', good);
   $('chkMode').textContent = !STT.SR ? '• ' + t('sttNone') : R.ready ? '✓ ' + t(STT.local ? 'sttLocal' : 'sttServer') : '';
-  $('chkStt').textContent = !STT.SR || !R.ready ? '' : STT.dead ? '• ' + t('sttFail', { x: STT.dead })
+  $('chkStt').textContent = !STT.SR || !R.ready ? '' : !$('consentChk').checked ? '• ' + t('sttConsent') : STT.dead ? '• ' + t('sttFail', { x: STT.dead })
     : STT.named ? '✓ ' + t('sttName') : '• ' + (STT.seen ? t('sttHeard', { x: STT.seen, n: curName() }) : t('sttWait', { n: curName() }));
 }
 
@@ -1731,12 +1740,16 @@ function init() {
   document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => {
     S.lang = b.dataset.lang; S.voiceTouched = false;
     if (STT.want) { sttPause(); STT.named = false; STT.seen = ''; sttStart(); }
+    else if (R.ready) sttDetect();
     applyLang();
   }));
   if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = refreshVoice;
   $('btnToSetup').onclick = () => show('s-setup');
   document.querySelectorAll('.chk').forEach(c => c.addEventListener('change', updateStart));
-  $('consentChk').addEventListener('change', updateStart);
+  $('consentChk').addEventListener('change', () => {
+    if (R.ready && $('consentChk').checked) sttStart(); else { sttPause(); STT.named = false; STT.seen = ''; }
+    updateCheck(); updateStart();
+  });
   $('voiceChk').addEventListener('change', () => { S.voiceTouched = true; });
   $('robotName').addEventListener('input', () => { STT.named = false; updateCheck(); });
   $('btnStart').onclick = () => {

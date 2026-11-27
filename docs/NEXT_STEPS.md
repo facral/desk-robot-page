@@ -17,6 +17,8 @@ Status 2026-11-26, version 7: owner feedback on version 6 applied, locally and u
 
 Status 2026-11-27: relay deployed and verified (version `drive-direct-2`: 1 MB upload and both recovery tests pass); its address is set in `index.html`. The relay writes files with DriveApp, one chunk per file. Copies of each deployed relay version are in `apps-script/versions/`; bump the `VERSION` comment and the `doGet` version together. Open: add real invite codes, use a dedicated Drive folder, consent text and ITMO approval before recruiting.
 
+Status 2026-11-27, privacy fixes: microphone only after consent and never after the session ends; sent data is no longer rewritten to the browser; no delete buttons after upload; relay (`drive-direct-3`) no longer returns internal error text and must be redeployed. Still open: researcher name, contact and consent form in `CONFIG`; invite code checked only at the end; any speech counts as an answer to the robot's questions.
+
 ## 1. Baseline **[you]** (2 min)
 ```
 cd D:\@Tesis\Claude\desk-robot-page

@@ -59,6 +59,7 @@ Not tested: a real microphone and recogniser in each language (keyword routing d
 ## Privacy notes
 
 - The page itself stores and sends no video, audio or photos. Camera frames are reduced to numbers on the device.
+- The microphone opens only while the consent box is ticked, and closes when the session ends. Once data has been sent or deleted, nothing is written back to the browser, and delete buttons disappear as soon as any file has left the device.
 - Speech recognition is done by the browser. Where the browser offers on-device recognition for the language, it is used; otherwise the browser sends the audio to its maker (Google for Chrome, Apple for Safari). The setup screen tells the participant which.
 - Speech text is personal data. The participant reviews and can delete it before sending. Until sent or deleted, the session is kept in this browser's local storage so a closed tab does not lose it.
 - Files carry a random session code. The link to a person is the invite code in the `uploads` sheet; keep that sheet restricted and separate from the folder.

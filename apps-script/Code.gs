@@ -1,4 +1,4 @@
-// VERSION: drive-direct-2 (2026-11-27). Must match the version shown when you open the /exec URL.
+// VERSION: drive-direct-3 (2026-11-27). Must match the version shown when you open the /exec URL.
 /**
  * Upload relay for the desk-robot session page. It only accepts the two CSV files of a session
  * (events with speech text, and face features); the page sends no video or audio.
@@ -33,12 +33,13 @@ function doPost(e) {
     if (b.action === 'status') return out(status_(b));
     return out({ ok: false, error: 'action' });
   } catch (err) {
-    return out({ ok: false, error: 'server', detail: String(err).slice(0, 200) });
+    console.error(err);   // visible under Executions, never sent to the caller
+    return out({ ok: false, error: 'server' });
   }
 }
 
 function doGet() {
-  return out({ ok: true, service: 'desk-robot-upload', version: 'drive-direct-2' });   // bump on every change, to see which code a deployment runs
+  return out({ ok: true, service: 'desk-robot-upload', version: 'drive-direct-3' });   // bump on every change, to see which code a deployment runs
 }
 
 function out(obj) {
