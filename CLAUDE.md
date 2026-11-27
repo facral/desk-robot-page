@@ -24,8 +24,8 @@ page is tested and stable (see docs/NEXT_STEPS.md, last section).
 - Do not commit; leave changes for the owner to review.
 
 ## Known-good invariants (checked 2026-11-26)
-- `CONFIG.CHUNK` = 3 MiB = 12 x 262144, as Drive resumable upload requires.
+- `CONFIG.CHUNK` = 3 MiB, equal to the relay's default `MAX_BYTES`, so every file goes in one chunk.
 - Actions `init / chunk / status` and their fields match between page and relay.
-- The page sends only `text/csv`, the relay accepts only `text/csv`, up to 20 MB.
+- The page sends only `text/csv`, the relay accepts only `text/csv`, one chunk per file, at most 3 MiB (`MAX_BYTES` = `CONFIG.CHUNK`); the relay writes files with DriveApp, no Drive REST calls.
 - File names `<code>_<laptop|phone>_events.csv` and `_features.csv` fit `NAME_RE`.
 - `MAX_USES` 12 = 2 files per session, with room for retries and a second device.

@@ -15,6 +15,8 @@ Status 2026-11-26, version 6: built locally, not committed and not published. No
 
 Status 2026-11-26, version 7: owner feedback on version 6 applied, locally and uncommitted. Number puzzles replaced by six detective cases across parts 1 and 2; example sentences on every part; spoken correction ("wrong, it should be ...") instead of rating buttons; the robot waits 1.3 s of silence and joins pieces before answering; all recogniser guesses are tried and the heard text is shown; position warnings. Placement drawing redone in the chosen isometric 3/4 style: two Superdesign generations missed the camera direction, so it is hand-drawn as inline SVG and imported to the Superdesign canvas for review.
 
+Status 2026-11-27: relay deployed and verified (version `drive-direct-2`: 1 MB upload and both recovery tests pass); its address is set in `index.html`. The relay writes files with DriveApp, one chunk per file. Copies of each deployed relay version are in `apps-script/versions/`; bump the `VERSION` comment and the `doGet` version together. Open: add real invite codes, use a dedicated Drive folder, consent text and ITMO approval before recruiting.
+
 ## 1. Baseline **[you]** (2 min)
 ```
 cd D:\@Tesis\Claude\desk-robot-page
@@ -57,10 +59,10 @@ Add a dedicated test code to `INVITES` first (each upload uses one of its `MAX_U
 $env:DESK_ENDPOINT = "https://script.google.com/macros/s/XXX/exec"
 $env:DESK_INVITE = "your-test-code"
 python scripts/test_upload.py --negative
-python scripts/test_upload.py --size-mb 5
-python scripts/test_upload.py --size-mb 20 --fail-at 2
-python scripts/test_upload.py --size-mb 20 --lose-reply-at 2
-python scripts/test_upload.py --size-mb 15
+python scripts/test_upload.py --size-mb 1
+python scripts/test_upload.py --size-mb 1 --fail-at 0
+python scripts/test_upload.py --size-mb 1 --lose-reply-at 0
+python scripts/test_upload.py --size-mb 4    # must FAIL with error size: files are one chunk of at most 3 MiB
 ```
 Run them in that order; that is 4 uploads, so 4 of the 12 uses. Each run ends with `PASS` or `FAIL` and exit code 0 or 1. After a PASS, open the Drive folder, confirm the `TEST_*_laptop_events.csv` file has the printed size, then delete it. `--negative` uploads nothing and uses no quota.
 

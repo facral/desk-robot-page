@@ -18,7 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ALLOWED_MIME = ['text/csv']
 NAME_RE = re.compile(r'^[A-Za-z0-9_.-]{1,80}$')
-CFG = {'invites': [], 'max_bytes': 20000000, 'max_uses': 12}
+CFG = {'invites': [], 'max_bytes': 3145728, 'max_uses': 12}
 USES, SESS, PENDING = {}, {}, {}
 
 
@@ -44,7 +44,9 @@ def handle(b):
         if b.get('total') != s['size']: return {'ok': False, 'error': 'total'}
         data = base64.b64decode(b.get('data') or '')
         if not data: return {'ok': False, 'error': 'empty'}
-        if b.get('offset') != s['got'] or s['got'] + len(data) > s['size']: return {'ok': False, 'error': 'drive'}
+        if s['got'] == s['size']: return {'ok': True, 'received': s['got']}   # retry after a lost reply
+        if b.get('offset') != 0: return {'ok': False, 'error': 'offset'}
+        if len(data) != s['size']: return {'ok': False, 'error': 'size'}   # like Code.gs: one chunk per file
         s['md5'].update(data); s['got'] += len(data)
         if s['got'] == s['size']:
             print('DONE %s %d bytes md5 %s' % (s['name'], s['size'], s['md5'].hexdigest()), flush=True)

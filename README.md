@@ -36,7 +36,7 @@ Times are milliseconds from `session_start`. Speech times come from the recognis
 
 1. **Drive folder.** A private folder, shared only with the researchers. Copy its id from the URL.
 2. **Sheet and script.** Create a Google Sheet, open **Extensions > Apps Script**, paste `apps-script/Code.gs`. It must be made from the sheet: the relay refuses uploads when it has no sheet, because the `uploads` sheet is the only record of which invite code sent which session.
-3. **Script properties** (Project Settings): `FOLDER_ID`, `INVITES` (comma-separated codes of 8 or more random characters). Optional: `MAX_BYTES` (default 20 MB), `MAX_USES` (default 12, two files per session).
+3. **Script properties** (Project Settings): `FOLDER_ID`, `INVITES` (comma-separated codes of 8 or more random characters). Optional: `MAX_BYTES` (default 3 MiB, one chunk per file), `MAX_USES` (default 12, two files per session).
 4. **Deploy** as a web app: Execute as = Me, Who has access = Anyone. Copy the `/exec` URL.
 5. **Page.** Set `CONFIG.ENDPOINT` in `index.html` to that URL, and `CONSENT_URL`, `RESEARCHER`, `CONTACT`. The endpoint may be public; the invite codes and the sheet may not.
 6. **Host** on GitHub Pages (camera and microphone need https).
@@ -47,7 +47,7 @@ With `ENDPOINT` empty the page runs in demo mode: nothing is sent and the files 
 ## Checks
 
 - `node scripts/test_page.mjs`: every string exists in all three languages with the same `{placeholders}`; name calling and keyword routing give the expected result.
-- `python scripts/test_upload.py --negative` and `--size-mb 5` against the real relay (or `scripts/mock_relay.py` offline).
+- `python scripts/test_upload.py --negative` and `--size-mb 1` against the real relay (or `scripts/mock_relay.py` offline).
 - `tools/stt_probe.html`: whether this browser can recognise Indonesian, English or Russian on the device.
 
 ## What was tested and what was not

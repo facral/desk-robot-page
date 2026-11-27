@@ -1,3 +1,4 @@
+// VERSION: drive-direct-2 (2026-11-27). Must match the version shown when you open the /exec URL.
 /**
  * Upload relay for the desk-robot session page. It only accepts the two CSV files of a session
  * (events with speech text, and face features); the page sends no video or audio.
@@ -8,7 +9,7 @@
  * Script properties to set (Project Settings > Script properties):
  *   FOLDER_ID  id of the private Drive folder that receives the files
  *   INVITES    comma-separated invite codes, for example: AB12CD,EF34GH
- *   MAX_BYTES  optional size limit per file, default 20000000
+ *   MAX_BYTES  optional size limit per file, default 3145728 (one chunk, see chunk_)
  *   MAX_USES   optional uploads allowed per invite code, default 12
  *              (one session uploads 2 files, so 12 allows retries and a second device)
  *
@@ -17,7 +18,7 @@
  *   {action:'chunk', sid, offset, total, data(base64)}          -> {ok, received}
  *   {action:'status', sid, total}                               -> {ok, received}
  *
- * Chunk size must be a multiple of 262144 bytes except for the last chunk.
+ * Each file arrives in a single chunk at offset 0; the relay writes it to the folder with DriveApp.
  * Keep the mapping invite -> file names (sheet "uploads") private: it is the only link between a person and a recording.
  */
 
@@ -32,12 +33,12 @@ function doPost(e) {
     if (b.action === 'status') return out(status_(b));
     return out({ ok: false, error: 'action' });
   } catch (err) {
-    return out({ ok: false, error: 'server' });
+    return out({ ok: false, error: 'server', detail: String(err).slice(0, 200) });
   }
 }
 
 function doGet() {
-  return out({ ok: true, service: 'desk-robot-upload' });
+  return out({ ok: true, service: 'desk-robot-upload', version: 'drive-direct-2' });   // bump on every change, to see which code a deployment runs
 }
 
 function out(obj) {
@@ -54,9 +55,10 @@ function init_(b) {
   if (!NAME_RE.test(String(b.name || ''))) return { ok: false, error: 'name' };
   if (ALLOWED_MIME.indexOf(b.mime) < 0) return { ok: false, error: 'mime' };
   var size = Number(b.size);
-  var max = Number(p.getProperty('MAX_BYTES') || 20000000);
+  var max = Number(p.getProperty('MAX_BYTES') || 3145728);
   if (!(size > 0) || size > max) return { ok: false, error: 'size' };
   if (!SpreadsheetApp.getActive()) return { ok: false, error: 'sheet' };   // no sheet = no code-to-session record
+  try { DriveApp.getFolderById(p.getProperty('FOLDER_ID')); } catch (err) { return { ok: false, error: 'folder' }; }
 
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
@@ -69,25 +71,8 @@ function init_(b) {
     lock.releaseLock();
   }
 
-  var res = UrlFetchApp.fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable', {
-    method: 'post',
-    contentType: 'application/json; charset=UTF-8',
-    headers: {
-      Authorization: 'Bearer ' + ScriptApp.getOAuthToken(),
-      'X-Upload-Content-Type': b.mime,
-      'X-Upload-Content-Length': String(size)
-    },
-    payload: JSON.stringify({ name: b.name, parents: [p.getProperty('FOLDER_ID')] }),
-    muteHttpExceptions: true,
-    followRedirects: false
-  });
-  if (res.getResponseCode() !== 200) return { ok: false, error: 'drive' };
-  var headers = res.getAllHeaders();
-  var url = headers['Location'] || headers['location'];
-  if (!url) return { ok: false, error: 'drive' };
-
   var sid = Utilities.getUuid();
-  CacheService.getScriptCache().put('sess_' + sid, JSON.stringify({ url: url, size: size, invite: invite, name: b.name }), 21600);
+  CacheService.getScriptCache().put('sess_' + sid, JSON.stringify({ size: size, invite: invite, name: b.name, mime: b.mime, done: false }), 21600);
   log_(invite, b.name, size, 'init');
   return { ok: true, sid: sid };
 }
@@ -97,55 +82,27 @@ function session_(sid) {
   return raw ? JSON.parse(raw) : null;
 }
 
+// shortcut: a whole file must arrive in one chunk (MAX_BYTES = the page's 3 MiB CHUNK); session CSVs are
+// well under 1 MB. For bigger files, go back to a Drive resumable upload (needs the Drive API service).
 function chunk_(b) {
   var s = session_(b.sid);
   if (!s) return { ok: false, error: 'sid' };
-  var offset = Number(b.offset), total = Number(b.total);
-  if (total !== s.size) return { ok: false, error: 'total' };
+  if (Number(b.total) !== s.size) return { ok: false, error: 'total' };
+  if (s.done) return { ok: true, received: s.size };   // a retry after a lost reply: the file already exists
+  if (Number(b.offset) !== 0) return { ok: false, error: 'offset' };
   var bytes = Utilities.base64Decode(b.data);
-  if (!bytes.length) return { ok: false, error: 'empty' };
-  var last = offset + bytes.length - 1;
-  var res = UrlFetchApp.fetch(s.url, {
-    method: 'put',
-    contentType: 'application/octet-stream',
-    headers: { 'Content-Range': 'bytes ' + offset + '-' + last + '/' + total },
-    payload: bytes,
-    muteHttpExceptions: true,
-    followRedirects: false
-  });
-  var code = res.getResponseCode();
-  if (code === 200 || code === 201) {
-    log_(s.invite, s.name, s.size, 'done');
-    return { ok: true, received: total };
-  }
-  if (code === 308) return { ok: true, received: received_(res) };
-  return { ok: false, error: 'drive' };
+  if (bytes.length !== s.size) return { ok: false, error: 'size' };
+  DriveApp.getFolderById(props_().getProperty('FOLDER_ID')).createFile(Utilities.newBlob(bytes, s.mime, s.name));
+  s.done = true;
+  CacheService.getScriptCache().put('sess_' + b.sid, JSON.stringify(s), 21600);
+  log_(s.invite, s.name, s.size, 'done');
+  return { ok: true, received: s.size };
 }
 
 function status_(b) {
   var s = session_(b.sid);
   if (!s) return { ok: false, error: 'sid' };
-  var res = UrlFetchApp.fetch(s.url, {
-    method: 'put',
-    contentType: 'application/octet-stream',
-    headers: { 'Content-Range': 'bytes */' + s.size },
-    payload: '',
-    muteHttpExceptions: true,
-    followRedirects: false
-  });
-  var code = res.getResponseCode();
-  if (code === 200 || code === 201) return { ok: true, received: s.size };
-  if (code === 308) return { ok: true, received: received_(res) };
-  return { ok: false, error: 'drive' };
-}
-
-// Drive answers 308 with "Range: bytes=0-N" for the bytes it holds; no Range header means none yet.
-function received_(res) {
-  var h = res.getAllHeaders();
-  var range = h['Range'] || h['range'];
-  if (!range) return 0;
-  var m = /bytes=0-(\d+)/.exec(range);
-  return m ? Number(m[1]) + 1 : 0;
+  return { ok: true, received: s.done ? s.size : 0 };
 }
 
 // Optional audit trail: a sheet named "uploads" in the spreadsheet bound to this script.
