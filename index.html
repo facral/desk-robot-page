@@ -205,12 +205,6 @@ svg[data-ring="think"] .ring{stroke:var(--ring-think);stroke-dasharray:30 70;ani
           <p class="small muted" data-i="codeHelp"></p>
         </div>
       </div>
-      <div class="grid3" id="inviteWrap">
-        <div class="card field">
-          <label for="inviteIn" data-i="inviteLabel"></label>
-          <input type="text" id="inviteIn" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false">
-        </div>
-      </div>
       <div class="card" id="camCard" style="margin:14px 0">
         <h3 data-i="camTitle"></h3>
         <p class="small muted" data-i="camHelp"></p>
@@ -223,6 +217,7 @@ svg[data-ring="think"] .ring{stroke:var(--ring-think);stroke-dasharray:30 70;ani
       </div>
       <label class="consent"><input type="checkbox" id="consentChk"><span data-i="consentLabel"></span>
         <a id="consentLink" href="#" target="_blank" rel="noopener" hidden data-i="consentLink"></a></label>
+      <p id="relayMsg" class="small" aria-live="polite"></p>
       <p><button type="button" class="btn primary" id="btnStart" disabled data-i="btnStart"></button></p>
     </section>
 
@@ -436,7 +431,6 @@ voiceLabel:['Suara robot (opsional)','Robot voice (optional)','Голос роб
 voiceNA:['Suara tidak tersedia, balasan tampil sebagai teks.','Voice not available. Replies appear as text.','Голос недоступен, ответы будут текстом.'],
 codeLabel:['Kode sesimu','Your session code','Код твоей сессии'],
 codeHelp:['Catat kode ini jika nanti ingin datamu dihapus.','Note it in case you want your data deleted later.','Запиши его, если позже захочешь удалить данные.'],
-inviteLabel:['Kode undangan dari peneliti','Invite code from the researcher','Код приглашения от исследователя'],
 camTitle:['Cek kamera dan mikrofon','Camera and microphone check','Проверка камеры и микрофона'],
 camHelp:['Izinkan kamera dan mikrofon. Lalu sebut nama robotmu sekali.','Allow camera and microphone. Then say your robot\'s name once.','Разреши камеру и микрофон. Затем один раз назови имя робота.'],
 camBtn:['Aktifkan kamera dan mikrofon','Turn on camera and microphone','Включить камеру и микрофон'],
@@ -458,7 +452,10 @@ sttHeard:['Terdengar: {x}. Coba sebut "{n}" lagi.','Heard: {x}. Try saying "{n}"
 sttConsent:['Centang persetujuan di bawah untuk mengetes mikrofon','Tick the consent box below to test the microphone','Отметь согласие ниже, чтобы проверить микрофон'],
 sttName:['Nama robot dikenali','The robot\'s name was recognised','Имя робота распознано'],
 sttFail:['Pengenalan ucapan berhenti ({x}). Cek izin mikrofon dan internet.','Speech recognition stopped ({x}). Check microphone permission and internet.','Распознавание остановилось ({x}). Проверь доступ к микрофону и интернет.'],
-consentLabel:['Aku sudah membaca informasi tadi dan setuju ikut.','I have read the information and agree to take part.','Я прочитал(а) информацию и согласен(на) участвовать.'],
+consentLabel:['Aku berusia 18 tahun atau lebih, sudah membaca informasi tadi, dan setuju ikut.','I am 18 or older, have read the information and agree to take part.','Мне есть 18 лет, я прочитал(а) информацию и согласен(на) участвовать.'],
+relayFull:['Batas pengiriman hari ini sudah penuh. Silakan ikut lagi besok.','Today\'s submission limit is reached. Please take part tomorrow.','Дневной лимит отправок исчерпан. Попробуй завтра.'],
+relayDown:['Server penerima tidak bisa dihubungi. Cek internetmu, atau coba lagi nanti.','The receiving server cannot be reached. Check your internet or try again later.','Сервер приёма недоступен. Проверь интернет или попробуй позже.'],
+upFull:['Batas hari ini sudah penuh. Datamu tersimpan di browser ini; buka halaman ini lagi besok lalu tekan Kirim sekarang.','Today\'s limit is reached. Your data is kept in this browser; open this page tomorrow and press Send now.','Дневной лимит исчерпан. Данные сохранены в этом браузере: открой страницу завтра и нажми «Отправить».'],
 consentLink:['Formulir persetujuan','Consent form','Форма согласия'],
 btnStart:['Mulai sesi','Start session','Начать сессию'],
 beepNote:['Sesi dimulai. Duduk seperti biasa.','The session has started. Sit as you normally would.','Сессия началась. Сиди как обычно.'],
@@ -750,7 +747,7 @@ const pick = a => a[Math.floor(Math.random() * a.length)];
 const pad = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
 const S = {
   lang:'id', name:'Budi', voiceOn:false, voiceOk:false, voiceTouched:false,
-  code:'', invite:'', t0:null, wall0:null, log:[], aborted:false, cancel:null,
+  code:'', t0:null, wall0:null, log:[], aborted:false, cancel:null,
   block:null, replies:0, solved:0, blockEnd:0, warmStep:0, ask:null, checkedIn:false, listen:null,
   fb:null, caseIdx:0, caseDone:false, posBad:null, posWarnT:-1e9, traits:{}, traitsLogged:false, recovered:null, wake:null,
   busy:false, stageOn:false, tickT:null, blockResolve:null, sched:[], screen:'s-intro'
@@ -1463,7 +1460,7 @@ function abortSession() {
 // Kept in this browser until sent or deleted, so a closed tab does not lose the session.
 function backup() {
   if (S.recovered || !S.log.length || R.upload.state === 'done') return;   // sent or deleted stays gone
-  try { localStorage.setItem(BACKUP_KEY, JSON.stringify({ code: S.code, invite: S.invite, device: DEVICE, events: csvText(), features: featCsv() })); } catch (e) {}
+  try { localStorage.setItem(BACKUP_KEY, JSON.stringify({ code: S.code, device: DEVICE, events: csvText(), features: featCsv() })); } catch (e) {}
 }
 function forgetBackup() { try { localStorage.removeItem(BACKUP_KEY); } catch (e) {} }
 function discardAll() {
@@ -1496,7 +1493,8 @@ async function sendAll() {
     forgetBackup(); renderEnd();
   } catch (e) {
     R.upload.state = 'idle'; renderEnd();
-    msg.textContent = t('upFail');
+    // show why, so a participant (or the researcher they write to) is not left guessing
+    msg.textContent = e.message === 'full' ? t('upFull') : t('upFail') + ' [' + e.message + ']';
     $('btnRetry').hidden = false; showDownloads(items);
   }
 }
@@ -1507,7 +1505,7 @@ function recoverSend() {
   try { S.recovered = JSON.parse(localStorage.getItem(BACKUP_KEY)); } catch (e) {}
   $('recoverBar').hidden = true;
   if (!S.recovered) return;
-  S.code = S.recovered.code; S.invite = S.recovered.invite || '';
+  S.code = S.recovered.code;
   show('s-end'); renderEnd(); $('btnSend').disabled = false; $('upMsg').textContent = '';
 }
 
@@ -1662,7 +1660,7 @@ const b64 = buf => {
   return btoa(s);
 };
 async function uploadBlob(blob, name, mime, onProgress) {
-  const init = await api({ action: 'init', invite: S.invite, name, mime, size: blob.size });
+  const init = await api({ action: 'init', name, mime, size: blob.size });
   if (!init.ok) throw new Error(init.error || 'init');
   let off = 0, fails = 0;
   while (off < blob.size) {
@@ -1727,10 +1725,17 @@ function drawGuide() {
 }
 
 /* ---------- Wiring ---------- */
+// 'ok', 'full' (today's limit used up) or 'down'. A relay that is down only warns: files can still be saved.
+async function checkRelay() {
+  if (DEMO) return;
+  try { R.relay = (await (await fetch(CONFIG.ENDPOINT)).json()).full ? 'full' : 'ok'; }
+  catch (e) { R.relay = 'down'; }
+  updateStart();
+}
 function updateStart() {
   const all = [...document.querySelectorAll('.chk')].every(c => c.checked) && $('consentChk').checked;
-  const inviteOk = DEMO || S.invite.length >= 4;
-  $('btnStart').disabled = !(all && R.ready && R.lmState === 'ready' && STT.SR && !STT.dead && inviteOk);
+  $('relayMsg').textContent = R.relay === 'full' || R.relay === 'down' ? t(R.relay === 'full' ? 'relayFull' : 'relayDown') : '';
+  $('btnStart').disabled = !(all && R.ready && R.lmState === 'ready' && STT.SR && !STT.dead && R.relay !== 'full');
 }
 function init() {
   const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -1744,7 +1749,7 @@ function init() {
     applyLang();
   }));
   if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = refreshVoice;
-  $('btnToSetup').onclick = () => show('s-setup');
+  $('btnToSetup').onclick = () => { show('s-setup'); checkRelay(); };
   document.querySelectorAll('.chk').forEach(c => c.addEventListener('change', updateStart));
   $('consentChk').addEventListener('change', () => {
     if (R.ready && $('consentChk').checked) sttStart(); else { sttPause(); STT.named = false; STT.seen = ''; }
@@ -1766,9 +1771,7 @@ function init() {
     logEv('enjoyment', x.dataset.v);
     if (R.upload.state === 'idle') { $('btnSend').disabled = false; $('upMsg').textContent = ''; }
   };
-  $('inviteWrap').hidden = DEMO;
   $('camBtn').onclick = enableCamera;
-  $('inviteIn').addEventListener('input', () => { S.invite = $('inviteIn').value.trim(); updateStart(); });
   $('btnSend').onclick = () => { logTraits(); sendAll(); };
   $('btnRetry').onclick = sendAll;
   $('btnDiscard').onclick = discardAll;

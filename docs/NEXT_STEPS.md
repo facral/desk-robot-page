@@ -19,6 +19,8 @@ Status 2026-11-27: relay deployed and verified (version `drive-direct-2`: 1 MB u
 
 Status 2026-11-27, privacy fixes: microphone only after consent and never after the session ends; sent data is no longer rewritten to the browser; no delete buttons after upload; relay (`drive-direct-3`) no longer returns internal error text and must be redeployed. Still open: researcher name, contact and consent form in `CONFIG`; invite code checked only at the end; any speech counts as an answer to the robot's questions.
 
+Status 2026-11-27, invite codes removed (relay `drive-direct-4`), because the link will be shared on social media. The page checks the relay before Start and shows why a send failed; the consent box now says 18 or older. This replaces every instruction below about `INVITES`, `MAX_USES` and `--invite`. Open before sharing: researcher contact, consent form, ITMO approval, dedicated Drive folder.
+
 ## 1. Baseline **[you]** (2 min)
 ```
 cd D:\@Tesis\Claude\desk-robot-page
@@ -56,10 +58,9 @@ Limits to know: one chunk POST carries about 4 MB of base64 JSON, under Apps Scr
 ### 4a. Relay test commands
 `scripts/test_upload.py` speaks the same protocol as `uploadBlob()` in `index.html` (3 MiB chunks, base64, text/plain POST). It was verified on 2026-11-16 against `scripts/mock_relay.py` only: rejection checks, 10 MB, both resume paths, and 120 MB all passed with matching md5. It has not run against the real Apps Script yet.
 
-Add a dedicated test code to `INVITES` first (each upload uses one of its `MAX_USES`), then in PowerShell:
+In PowerShell:
 ```
 $env:DESK_ENDPOINT = "https://script.google.com/macros/s/XXX/exec"
-$env:DESK_INVITE = "your-test-code"
 python scripts/test_upload.py --negative
 python scripts/test_upload.py --size-mb 1
 python scripts/test_upload.py --size-mb 1 --fail-at 0
@@ -70,7 +71,7 @@ Run them in that order; that is 4 uploads, so 4 of the 12 uses. Each run ends wi
 
 What to expect on the real relay: a few seconds per chunk, so 15 MB (5 chunks) takes under a minute, not seconds. If `--negative` reports "reply is not JSON", the web app is not deployed with access = Anyone or the URL is not the `/exec` one.
 
-To rehearse offline: `python scripts/mock_relay.py --invites TEST01`, then use endpoint `http://127.0.0.1:8787/exec` and invite `TEST01`.
+To rehearse offline: `python scripts/mock_relay.py`, then use endpoint `http://127.0.0.1:8787/exec`.
 
 ### 4b. Camera, MediaPipe and sign check (needs no Apps Script and no GitHub)
 This can be done today on your own laptop, in demo mode.

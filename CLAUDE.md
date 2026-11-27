@@ -18,7 +18,7 @@ page is tested and stable (see docs/NEXT_STEPS.md, last section).
 
 ## Hard rules
 - Events files contain participant speech in `heard` rows. Never open one or paste it into an LLM tool unless it went through `scripts/strip_speech.py` first. Quality checks run as local scripts.
-- Never commit invite codes, the `uploads` sheet, `.clasprc.json`, or anything from the Drive folder. The `/exec` endpoint URL may be committed.
+- Never commit the `uploads` sheet, `.clasprc.json`, or anything from the Drive folder. The `/exec` endpoint URL may be committed.
 - `index.html` and `Code.gs` are a matched pair: if you change an action name, a field, `CHUNK`, `ALLOWED_MIME` or `NAME_RE` in one, change the other and note it in `README.md`.
 - Deliverable text in English. Every UI string has Indonesian, English and Russian with the same `{placeholders}`; `node scripts/test_page.mjs` checks this.
 - Do not commit; leave changes for the owner to review.
@@ -28,4 +28,4 @@ page is tested and stable (see docs/NEXT_STEPS.md, last section).
 - Actions `init / chunk / status` and their fields match between page and relay.
 - The page sends only `text/csv`, the relay accepts only `text/csv`, one chunk per file, at most 3 MiB (`MAX_BYTES` = `CONFIG.CHUNK`); the relay writes files with DriveApp, no Drive REST calls.
 - File names `<code>_<laptop|phone>_events.csv` and `_features.csv` fit `NAME_RE`.
-- `MAX_USES` 12 = 2 files per session, with room for retries and a second device.
+- No invite codes. The relay limits by file name, content, size (3 MiB) and `DAILY_MAX` files a day; page file names must keep matching its `NAME_RE`.

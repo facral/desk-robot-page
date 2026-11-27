@@ -35,12 +35,12 @@ Times are milliseconds from `session_start`. Speech times come from the recognis
 ## Setup (about 15 minutes)
 
 1. **Drive folder.** A private folder, shared only with the researchers. Copy its id from the URL.
-2. **Sheet and script.** Create a Google Sheet, open **Extensions > Apps Script**, paste `apps-script/Code.gs`. It must be made from the sheet: the relay refuses uploads when it has no sheet, because the `uploads` sheet is the only record of which invite code sent which session.
-3. **Script properties** (Project Settings): `FOLDER_ID`, `INVITES` (comma-separated codes of 8 or more random characters). Optional: `MAX_BYTES` (default 3 MiB, one chunk per file), `MAX_USES` (default 12, two files per session).
-4. **Deploy** as a web app: Execute as = Me, Who has access = Anyone. Copy the `/exec` URL.
-5. **Page.** Set `CONFIG.ENDPOINT` in `index.html` to that URL, and `CONSENT_URL`, `RESEARCHER`, `CONTACT`. The endpoint may be public; the invite codes and the sheet may not.
+2. **Script.** Create a Google Sheet, open **Extensions > Apps Script**, paste `apps-script/Code.gs`. The sheet is only a log of uploads.
+3. **Script properties** (Project Settings): `FOLDER_ID`. Optional: `DAILY_MAX` (files per day, default 200; a session sends two), `MAX_BYTES` (default 3 MiB).
+4. **Deploy** as a web app: Execute as = Me, Who has access = Anyone. Copy the `/exec` URL. After any change use Manage deployments > New version, then open the URL and check the version.
+5. **Page.** Set `CONFIG.ENDPOINT` in `index.html` to that URL, and `CONSENT_URL`, `RESEARCHER`, `CONTACT`.
 6. **Host** on GitHub Pages (camera and microphone need https).
-7. **Try it** with an invite code; the Drive folder should show the two CSV files.
+7. **Try it**: run one session; the Drive folder should show the two CSV files.
 
 With `ENDPOINT` empty the page runs in demo mode: nothing is sent and the files are offered for download. `#fast` in the URL shortens every part to 40 seconds.
 
@@ -62,7 +62,8 @@ Not tested: a real microphone and recogniser in each language (keyword routing d
 - The microphone opens only while the consent box is ticked, and closes when the session ends. Once data has been sent or deleted, nothing is written back to the browser, and delete buttons disappear as soon as any file has left the device.
 - Speech recognition is done by the browser. Where the browser offers on-device recognition for the language, it is used; otherwise the browser sends the audio to its maker (Google for Chrome, Apple for Safari). The setup screen tells the participant which.
 - Speech text is personal data. The participant reviews and can delete it before sending. Until sent or deleted, the session is kept in this browser's local storage so a closed tab does not lose it.
-- Files carry a random session code. The link to a person is the invite code in the `uploads` sheet; keep that sheet restricted and separate from the folder.
+- Files carry a random session code, shown to the participant. There are no invite codes and no list linking a code to a person: deletion requests are served by the session code.
+- The upload address is public. The relay accepts only session file names and content, small files, and at most `DAILY_MAX` files a day. A stranger can still use up a day's limit.
 
 ## Suggested consent wording (adapt, and have it checked with ITMO)
 
